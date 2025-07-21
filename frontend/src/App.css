@@ -1,0 +1,26 @@
+body {
+  margin: 0;
+  background-color: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.App {
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.App-header {
+  background-color: white;
+  padding: 40px 20px;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 0;
+}
+
+.App-header h1 {
+  margin: 0 0 40px 0;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+  color: #2c3e50;
+}
