@@ -245,6 +245,20 @@ export class LocationHierarchy {
           waitUntil: 'networkidle2',
           timeout: 30000
         });
+
+        // После page.goto добавь проверку:
+        await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 30000
+        });
+
+        // ДОБАВЬ ЭТУ ПРОВЕРКУ:
+        const pageContent = await page.content();
+        if (pageContent.includes('Ресурс (Page) недоступний') || pageContent.includes('неможливо завантажити')) {
+        log('🚫 Instagram заблокировал доступ к локациям с этого IP', 'error');
+        hasMorePages = false;
+        break;
+        }
         
         // Увеличиваем счетчик запросов
         this.requestTracker.incrementRequest();

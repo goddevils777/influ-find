@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 import { LocationParser } from '../parsers/locationParser';
 import { log } from '../utils/helpers';
 import { ResumeParser } from '../parsers/resumeParser';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -29,7 +31,7 @@ router.post('/database/create', async (req: Request, res: Response) => {
 
     // Затем запускаем создание базы
     try {
-      const parser = new LocationParser(false); // false = с авторизацией
+      const parser = new LocationParser(true); // true = гостевой режим
       
       log(`Initializing parser for ${option}...`);
       await parser.init();
@@ -262,7 +264,7 @@ router.post('/parsing/resume', async (req: Request, res: Response) => {
     });
 
     // Запускаем восстановление в фоне
-    const parser = new LocationParser(false); // false = с авторизацией
+    const parser = new LocationParser(true); // true = гостевой режим
     const resumeParser = new ResumeParser();
     
     try {
@@ -311,11 +313,11 @@ router.post('/parsing/resume-guest', async (req: Request, res: Response) => {
     // Запускаем восстановление в гостевом режиме
     const parser = new LocationParser(true); // true = гостевой режим
     const resumeParser = new ResumeParser();
-    
+
     try {
-      await parser.init();
-      await resumeParser.resumeParsingUkraine(parser.page);
-      await parser.close();
+    await parser.init();
+    await resumeParser.resumeParsingUkraine(parser.page);
+    await parser.close();
       
       log('✅ Guest resume parsing completed successfully');
     } catch (error) {
@@ -401,6 +403,95 @@ router.get('/test/guest', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Guest test failed'
+    });
+  }
+});
+
+// Получить все страны
+router.get('/countries', (req: Request, res: Response) => {
+  try {
+    const countriesFile = path.join(__dirname, '../../data/locations/countries.json');
+    
+    if (fs.existsSync(countriesFile)) {
+      const countries = JSON.parse(fs.readFileSync(countriesFile, 'utf8'));
+      res.json({
+        success: true,
+        countries: countries
+      });
+    } else {
+      res.json({
+        success: true,
+        countries: []
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get countries'
+    });
+  }
+});
+
+// Получить города страны
+router.get('/cities/:countryCode', (req: Request, res: Response) => {
+  try {
+    const { countryCode } = req.params;
+    const citiesFile = path.join(__dirname, `../../data/locations/cities_${countryCode}.json`);
+    
+    if (fs.existsSync(citiesFile)) {
+      const cities = JSON.parse(fs.readFileSync(citiesFile, 'utf8'));
+      res.json({
+        success: true,
+        cities: cities
+      });
+    } else {
+      res.json({
+        success: true,
+        cities: []
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get cities'
+    });
+  }
+});
+
+// Получить локации города
+router.get('/locations/:cityId', (req: Request, res: Response) => {
+  try {
+    const { cityId } = req.params;
+    const dataPath = path.join(__dirname, '../../data/locations');
+    
+    if (fs.existsSync(dataPath)) {
+      const files = fs.readdirSync(dataPath);
+      const locationFile = files.find(file => 
+        file.startsWith(`locations_${cityId}_`)
+      );
+      
+      if (locationFile) {
+        const locations = JSON.parse(fs.readFileSync(path.join(dataPath, locationFile), 'utf8'));
+        res.json({
+          success: true,
+          locations: locations
+        });
+      } else {
+        res.json({
+          success: true,
+          locations: []
+        });
+      }
+    } else {
+      res.json({
+        success: true,
+        locations: []
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get locations'
     });
   }
 });

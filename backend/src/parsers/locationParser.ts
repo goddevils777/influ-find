@@ -27,25 +27,34 @@ export class LocationParser {
       }
 
       // Настройка браузера
-      const launchOptions: any = {
-        headless: false,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--start-maximized'
-        ]
-      };
+    const launchOptions: any = {
+    headless: false,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--start-maximized'
+        // УБЕРИ '--incognito' ОТСЮДА
+    ]
+    };
 
-      // В гостевом режиме добавляем инкогнито
-      if (this.guestMode) {
-        launchOptions.args.push('--incognito');
-        log('🔒 Запуск в гостевом режиме (без авторизации)');
-      }
 
-      this.browser = await puppeteer.launch(launchOptions);
-      
-      this.page = await this.browser.newPage();
+
+    this.browser = await puppeteer.launch(launchOptions);
+
+    // ЗАМЕНИ СОЗДАНИЕ СТРАНИЦЫ НА:
+    const context = await this.browser.createBrowserContext();
+    this.page = await context.newPage();
+
+
+    // ДОБАВЬ ОЧИСТКУ ДАННЫХ:
+    await this.page.evaluateOnNewDocument(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    });
+
+    // Очистить cookies
+    await this.page.deleteCookie(...(await this.page.cookies()));
       
       // User-Agent
       const userAgent = PARSER_CONFIG.userAgents[
@@ -54,15 +63,18 @@ export class LocationParser {
       await this.page.setUserAgent(userAgent);
       
       // Авторизация только если НЕ гостевой режим
-      if (!this.guestMode) {
-        const savedAuth = await this.checkSavedAuth();
-        
-        if (!savedAuth) {
-          await this.manualAuth();
-        }
-      } else {
-        log('👤 Гостевой режим - пропускаем авторизацию');
-      }
+    // В файле src/parsers/locationParser.ts в методе init() после строки:
+    if (!this.guestMode) {
+    log('🔍 Режим с авторизацией - проверяем сохраненную авторизацию...');
+    const savedAuth = await this.checkSavedAuth();
+    
+    if (!savedAuth) {
+        log('❌ Нет сохраненной авторизации - требуется ручная авторизация');
+        await this.manualAuth();
+    }
+    } else {
+    log('👤 Гостевой режим - пропускаем авторизацию');
+    }
       
       log('LocationParser initialized successfully');
     } catch (error) {
@@ -137,34 +149,82 @@ export class LocationParser {
   }
 
   // НОВЫЙ ГЛАВНЫЙ МЕТОД - использует иерархию или сохраненные данные
-  async findTopLocations(cityName: string): Promise<string[]> {
-    try {
-      if (!this.page) await this.init();
-      
-      log(`🔍 Поиск локаций для города: ${cityName}`);
-      
-      // Сначала проверяем есть ли уже сохраненные локации для этого города
-      const savedLocations = this.hierarchy.getLocationsForCity(cityName);
-      
-      if (savedLocations.length > 0) {
-        log(`✅ Найдено ${savedLocations.length} сохраненных локаций для ${cityName}`);
-        return savedLocations.slice(0, 20); // Берем первые 20
-      }
-      
-      // Если нет сохраненных данных - предлагаем создать базу
-      log(`📝 Сохраненных локаций для ${cityName} не найдено`);
-      log('🔧 Необходимо создать базу локаций. Варианты:');
-      log('1. Создать базу для Украины (рекомендуется)');
-      log('2. Создать базу для Польши');
-      log('3. Создать базу всех стран (долго)');
-      
-      return [];
-      
-    } catch (error) {
-      log(`Ошибка поиска локаций: ${error}`, 'error');
-      return [];
+// НОВЫЙ ГЛАВНЫЙ МЕТОД - использует иерархию или сохраненные данные
+async findTopLocations(cityName: string): Promise<string[]> {
+  try {
+    if (!this.page) await this.init();
+    
+    log(`🔍 Поиск локаций для города: ${cityName}`);
+    
+    // Сначала проверяем есть ли уже сохраненные локации для этого города
+    const savedLocations = this.hierarchy.getLocationsForCity(cityName);
+    
+    if (savedLocations.length > 0) {
+      log(`✅ Найдено ${savedLocations.length} сохраненных локаций для ${cityName}`);
+      return savedLocations.slice(0, 20); // Берем первые 20
     }
+    
+    // ЕСЛИ НЕТ ЛОКАЦИЙ - ИЩЕМ ГОРОД В БАЗЕ ГОРОДОВ И ПАРСИМ ЕГО
+    log(`📝 Сохраненных локаций для ${cityName} не найдено, ищем в базе городов...`);
+    
+    // Проверяем есть ли город в базе украинских городов
+    const fs = require('fs');
+    const path = require('path');
+    const citiesFile = path.join(__dirname, '../../data/locations/cities_UA.json');
+    
+    if (fs.existsSync(citiesFile)) {
+      const cities = JSON.parse(fs.readFileSync(citiesFile, 'utf8'));
+      const city = cities.find((c: any) => 
+        c.name.toLowerCase() === cityName.toLowerCase() || 
+        c.name.toLowerCase().includes(cityName.toLowerCase())
+      );
+      
+      if (city) {
+        log(`🏙️ Город ${cityName} найден в базе с ID: ${city.id}, URL: ${city.url}`);
+        log(`🚀 Запускаем парсинг локаций по URL: ${city.url}`);
+        
+        // Парсим локации используя URL из базы данных
+        try {
+          await this.page.goto(city.url, {
+            waitUntil: 'networkidle2',
+            timeout: 30000
+          });
+          
+          await delay(3000);
+          
+          // Проверяем что страница загрузилась
+          const pageContent = await this.page.content();
+          if (pageContent.includes('Ресурс (Page) недоступний') || pageContent.includes('неможливо завантажити')) {
+            log('🚫 Instagram заблокировал доступ к локациям с этого IP', 'error');
+            return [];
+          }
+          
+          log(`📄 Страница города загружена успешно, начинаем парсинг локаций...`);
+          
+          // Запускаем парсинг локаций для города
+          await this.hierarchy.parseLocationsInCity(this.page, city.id, city.name);
+          
+        } catch (error) {
+          log(`❌ Ошибка загрузки страницы города ${city.url}: ${error}`, 'error');
+          return [];
+        }
+        
+        // После парсинга получаем локации снова
+        const newLocations = this.hierarchy.getLocationsForCity(cityName);
+        log(`✅ Спарсено ${newLocations.length} локаций для города ${cityName}`);
+        
+        return newLocations.slice(0, 20);
+      }
+    }
+    
+    log(`❌ Город ${cityName} не найден в базе данных`);
+    return [];
+    
+  } catch (error) {
+    log(`Ошибка поиска локаций: ${error}`, 'error');
+    return [];
   }
+}
 
   // НОВЫЕ МЕТОДЫ ДЛЯ СОЗДАНИЯ БАЗЫ
   async createLocationDatabase(option: 'ukraine' | 'poland' | 'all'): Promise<void> {

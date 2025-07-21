@@ -4,23 +4,50 @@ import { InfluencerService } from '../services/influencerService';
 import { cacheService } from '../services/cacheService';
 import { log } from '../utils/helpers';
 
-const parser = new InstagramParser();
-const influencerService = new InfluencerService();
 
 
 export const searchByCity = async (req: Request, res: Response) => {
   try {
+    log(`🔍 searchByCity вызвана с параметрами: ${JSON.stringify(req.body)}`);
     const { cityName, guestMode } = req.body;
     
     if (!cityName) {
+      log(`❌ Не указано название города`);
       return res.status(400).json({ error: 'City name is required' });
     }
 
+    log(`🔍 Ищем город: ${cityName}`);
+    
+    // ДОБАВЬ ПРОВЕРКУ ЕСТЬ ЛИ УЖЕ ЛОКАЦИИ ДЛЯ ГОРОДА
+    log(`🔍 Импортируем LocationHierarchy...`);
+    const { LocationHierarchy } = require('../parsers/locationHierarchy');
+    const hierarchy = new LocationHierarchy();
+    
+    log(`🔍 Проверяем существующие локации для города: ${cityName}`);
+    const existingLocations = hierarchy.getLocationsForCity(cityName);
+    
+    log(`🔍 Найдено существующих локаций: ${existingLocations.length}`);
+    
+    if (existingLocations.length > 0) {
+      log(`✅ Найдены сохраненные локации для ${cityName}: ${existingLocations.length}`);
+      return res.json({
+        success: true,
+        data: {
+          city: cityName,
+          locationsFound: existingLocations.length,
+          message: 'Локации уже есть в базе данных',
+          fromCache: true
+        }
+      });
+    }
+
+    log(`🔍 Проверяем кэш для города: ${cityName}`);
     const cacheKey = `city:${cityName.toLowerCase().trim()}${guestMode ? ':guest' : ''}`;
     
     // Проверяем кэш
     const cachedResult = cacheService.get(cacheKey);
     if (cachedResult) {
+      log(`✅ Найден результат в кэше для ${cityName}`);
       return res.json({
         success: true,
         data: cachedResult,
@@ -28,19 +55,25 @@ export const searchByCity = async (req: Request, res: Response) => {
       });
     }
 
-    // Получаем данные из сервиса с учетом режима
-    const influencerService = new InfluencerService(guestMode || false);
+    log(`🔧 Создаем InfluencerService с guestMode: true`);
+    // ПРИНУДИТЕЛЬНО ИСПОЛЬЗУЕМ ГОСТЕВОЙ РЕЖИМ
+    const influencerService = new InfluencerService(true); // true = гостевой режим
+    
+    log(`🚀 Запускаем парсинг города: ${cityName}`);
     const influencers = await influencerService.getInfluencersByCity(cityName);
+    
+    log(`✅ Парсинг завершен. Найдено инфлюенсеров: ${influencers.length}`);
     
     const result = {
       city: cityName,
       influencers: influencers,
       status: 'completed',
       lastUpdated: new Date().toISOString(),
-      mode: guestMode ? 'guest' : 'authenticated'
+      mode: 'guest'
     };
     
     // Сохраняем в кэш
+    log(`💾 Сохраняем результат в кэш`);
     cacheService.set(cacheKey, result);
     
     res.json({
@@ -48,14 +81,20 @@ export const searchByCity = async (req: Request, res: Response) => {
       data: result,
       cached: false
     });
+    
   } catch (error) {
+    log(`❌ Критическая ошибка в searchByCity: ${error}`, 'error');
+    if (error instanceof Error) {
+      log(`❌ Детали ошибки: ${error.message}`, 'error');
+      log(`❌ Stack trace: ${error.stack}`, 'error');
+    }
     res.status(500).json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
-
 
 export const getParserStatus = (req: Request, res: Response) => {
   const cacheStats = cacheService.getStats();
@@ -72,11 +111,11 @@ export const getParserStatus = (req: Request, res: Response) => {
   }
   
   res.json({
-    isRunning: parser.getStatus(),
+    isRunning: false, // ЗАМЕНИ parser.getStatus() НА false
     cache: cacheStats,
     instagram: {
       accounts: authStatus,
-      status: authStatus.active > 0 ? 'authenticated' : 'not_authenticated'
+      status: authStatus.active > 0 ? 'connected' : 'disconnected'
     }
   });
 };
@@ -89,38 +128,22 @@ export const forceParseCity = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'City name is required' });
     }
 
-    log(`Force parsing requested for city: ${cityName}`);
-    
-    // Очищаем кэш для этого города
-    const cacheKey = `city:${cityName.toLowerCase().trim()}`;
-    cacheService.delete(cacheKey);
-    
-    // Запускаем реальный парсинг
+    log(`🔧 Создаем InfluencerService с guestMode: true для принудительного парсинга`);
+    const influencerService = new InfluencerService(true); // СОЗДАЙ НОВЫЙ ЭКЗЕМПЛЯР
     const influencers = await influencerService.parseNewCity(cityName);
-    
-    const result = {
-      city: cityName,
-      influencers: influencers,
-      status: 'completed',
-      lastUpdated: new Date().toISOString(),
-      source: 'real_parsing'
-    };
-    
-    // Сохраняем в кэш
-    cacheService.set(cacheKey, result);
     
     res.json({
       success: true,
-      data: result,
-      cached: false,
-      message: `Successfully parsed ${influencers.length} influencers`
+      data: {
+        city: cityName,
+        influencers: influencers,
+        forced: true
+      }
     });
-    
   } catch (error) {
-    log(`Force parse error: ${error}`, 'error');
     res.status(500).json({ 
       success: false, 
-      error: 'Parsing failed. Please try again later.' 
+      error: 'Force parse failed' 
     });
   }
 };

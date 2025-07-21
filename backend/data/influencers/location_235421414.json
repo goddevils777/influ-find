@@ -1,0 +1,45 @@
+{
+  "locationId": "235421414",
+  "influencers": [
+    {
+      "username": "_____innuska_blonda_____",
+      "fullName": "_____innuska_blonda_____",
+      "followersCount": 23769,
+      "bio": "𝐋𝐚𝐰𝐲𝐞𝐫 & 𝐌𝐨𝐝𝐞𝐥 💫 📍Ukraine, Kyiv 💙💛",
+      "cityId": "parsed_city",
+      "id": "user_hd0h98z8f",
+      "categories": [
+        "Local"
+      ],
+      "reelsViews": [
+        "1,054",
+        "5,130",
+        "1,016",
+        "2,122"
+      ],
+      "reelsCount": 4,
+      "createdAt": "2025-07-21T19:48:16.142Z"
+    },
+    {
+      "username": "sasha_prohor",
+      "fullName": "sasha_prohor",
+      "followersCount": 16181,
+      "bio": "•🇺🇦Ukrainian•🏆срібний призер \"Танці з зірками 6\"• ballet dancer D’arts Dance Project•Dancer•Choreographer",
+      "cityId": "parsed_city",
+      "id": "user_dat2yjhb1",
+      "categories": [
+        "Local"
+      ],
+      "reelsViews": [
+        "204",
+        "377",
+        "162",
+        "213"
+      ],
+      "reelsCount": 4,
+      "createdAt": "2025-07-21T19:49:36.175Z"
+    }
+  ],
+  "cachedAt": "2025-07-21T19:50:10.564Z",
+  "count": 2
+}

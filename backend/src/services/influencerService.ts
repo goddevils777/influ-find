@@ -1,11 +1,12 @@
 import { Influencer, City } from '../models/influencer';
 import { InstagramParser } from '../parsers/instagram';
-
+import { log } from '../utils/helpers';
 
 export class InfluencerService {
   private parser: InstagramParser;
 
   constructor(useGuestMode: boolean = false) {
+    log(`🔧 InfluencerService создается с guestMode: ${useGuestMode}`);
     this.parser = new InstagramParser(useGuestMode);
   }
 
