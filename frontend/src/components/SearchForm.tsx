@@ -222,6 +222,64 @@ const SearchForm: React.FC = () => {
                   )}
                 </div>
 
+                {/* ВЫБРАННЫЕ ЛОКАЦИИ КАК ТЕГИ */}
+                {selectedLocations.length > 0 && (
+                  <div className={styles.selectedLocationsTags}>
+                    <div className={styles.tagsHeader}>
+                      <span className={styles.tagsTitle}>
+                        Выбрано локаций ({selectedLocations.length}):
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedLocations([]);
+                          sessionStorage.setItem('selectedLocations', JSON.stringify([]));
+                        }}
+                        className={styles.clearAllButton}
+                        title="Очистить все"
+                      >
+                        ✕ Очистить все
+                      </button>
+                    </div>
+                    
+                    <div className={styles.tagsContainer}>
+                      {selectedLocations.map((locationId) => {
+                        const location = locations.find(loc => loc.id === locationId);
+                        if (!location) return null;
+                        
+                        return (
+                          <div key={locationId} className={styles.locationTag}>
+                            <span className={styles.tagText} title={location.name}>
+                              {location.name.length > 25 ? 
+                                location.name.substring(0, 25) + '...' : 
+                                location.name
+                              }
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newSelection = selectedLocations.filter(id => id !== locationId);
+                                setSelectedLocations(newSelection);
+                                sessionStorage.setItem('selectedLocations', JSON.stringify(newSelection));
+                              }}
+                              className={styles.tagRemoveButton}
+                              title="Удалить"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className={styles.tagsActions}>
+                      <span className={styles.tagsStats}>
+                        {selectedLocations.length} из {locations.length} локаций
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Список локаций */}
                 <div className={styles.locationsContainer}>
                   {filteredLocations.map((location, index) => {

@@ -19,96 +19,196 @@ export class LocationParser {
     this.hierarchy = new LocationHierarchy();
     this.guestMode = guestMode;
   }
+// В locationParser.ts ЗАМЕНИТЬ блок настройки браузера в методе init():
 
-  async init(): Promise<void> {
-    try {
-      if (this.browser) {
-        await this.browser.close();
-      }
+async init(): Promise<void> {
+  try {
+    if (this.browser) {
+      await this.browser.close();
+    }
 
-      // Настройка браузера
-const launchOptions: any = {
-  headless: false,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox'
-  ]
-  // УБИРАЕМ все остальные args!
-};
-
-
+    // УЛУЧШЕННЫЕ НАСТРОЙКИ БРАУЗЕРА ДЛЯ ОБХОДА ДЕТЕКЦИИ
+    const launchOptions: any = {
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-field-trial-config',
+        '--disable-ipc-flooding-protection',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-default-apps',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-hang-monitor',
+        '--disable-sync',
+        '--disable-translate',
+        '--disable-plugins',
+        '--disable-plugins-discovery',
+        '--disable-prerender-local-predictor',
+        '--disable-threaded-animation',
+        '--disable-threaded-scrolling',
+        '--disable-in-process-stack-traces',
+        '--disable-histogram-customizer',
+        '--disable-gl-extensions',
+        '--disable-composited-antialiasing',
+        '--disable-canvas-aa',
+        '--disable-3d-apis',
+        '--disable-accelerated-2d-canvas',
+        '--disable-accelerated-jpeg-decoding',
+        '--disable-accelerated-mjpeg-decode',
+        '--disable-app-list-dismiss-on-blur',
+        '--disable-accelerated-video-decode',
+        '--window-size=1366,768',
+        '--start-maximized'
+      ]
+    };
 
     this.browser = await puppeteer.launch(launchOptions);
 
-    // ЗАМЕНИ СОЗДАНИЕ СТРАНИЦЫ НА:
+    // СОЗДАЕМ НОВЫЙ КОНТЕКСТ С ОЧИСТКОЙ ДАННЫХ
     const context = await this.browser.createBrowserContext();
     this.page = await context.newPage();
 
-
-
-
-    // ДОБАВЬ ОЧИСТКУ ДАННЫХ:
+    // ОЧИСТКА ДАННЫХ БРАУЗЕРА
     await this.page.evaluateOnNewDocument(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+      // Очищаем хранилища
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Удаляем WebDriver следы
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      });
+      
+      // Маскируем автоматизацию
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      });
+      
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+      
+      // Удаляем chrome объект
+      if ('chrome' in window) {
+        delete (window as any).chrome;
+      }
     });
 
-    // Очистить cookies
+    // Очищаем старые cookies
     await this.page.deleteCookie(...(await this.page.cookies()));
-      
-      // User-Agent
-      const userAgent = PARSER_CONFIG.userAgents[
-        Math.floor(Math.random() * PARSER_CONFIG.userAgents.length)
-      ];
-      await this.page.setUserAgent(userAgent);
-      
-      // Авторизация только если НЕ гостевой режим
-    // В файле src/parsers/locationParser.ts в методе init() после строки:
-    if (!this.guestMode) {
-    log('🔍 Режим с авторизацией - проверяем сохраненную авторизацию...');
-    const savedAuth = await this.checkSavedAuth();
     
-    if (!savedAuth) {
+    // УСТАНАВЛИВАЕМ РЕАЛИСТИЧНЫЙ USER-AGENT
+    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+    await this.page.setUserAgent(userAgent);
+    
+    // УСТАНАВЛИВАЕМ VIEWPORT
+    await this.page.setViewport({ 
+      width: 1366, 
+      height: 768,
+      deviceScaleFactor: 1
+    });
+    
+    // УСТАНАВЛИВАЕМ ДОПОЛНИТЕЛЬНЫЕ ЗАГОЛОВКИ
+    await this.page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'max-age=0'
+    });
+    
+    // АВТОРИЗАЦИЯ
+    if (!this.guestMode) {
+      log('🔍 Режим с авторизацией - проверяем сохраненную авторизацию...');
+      const savedAuth = await this.checkSavedAuth();
+      
+      if (!savedAuth) {
         log('❌ Нет сохраненной авторизации - требуется ручная авторизация');
         await this.manualAuth();
-    }
+      }
     } else {
-    log('👤 Гостевой режим - пропускаем авторизацию');
+      log('👤 Гостевой режим - пропускаем авторизацию');
     }
-      
-      log('LocationParser initialized successfully');
-    } catch (error) {
-      log(`Failed to initialize parser: ${error}`, 'error');
-      throw error;
-    }
+    
+    log('LocationParser initialized successfully');
+  } catch (error) {
+    log(`Failed to initialize parser: ${error}`, 'error');
+    throw error;
   }
+}
 
   // Методы авторизации остаются без изменений
-  private async checkSavedAuth(): Promise<boolean> {
+    // backend/src/parsers/locationParser.ts - ЗАМЕНИТЬ метод checkSavedAuth
+    private async checkSavedAuth(): Promise<boolean> {
     try {
-      const cookiesLoaded = await this.cookieManager.loadCookies(this.page);
-      
-      if (cookiesLoaded) {
+        // Проверяем возраст cookies
+        const cookieAge = this.cookieManager.getCookieAge();
+        if (cookieAge !== null) {
+        log(`📅 Cookie age: ${cookieAge.toFixed(1)} hours`);
+        
+        // Если cookies старше 24 часов, лучше их обновить
+        if (cookieAge > 24) {
+            log('⚠️ Cookies are quite old, might need refresh');
+        }
+        }
+        
+        const cookiesLoaded = await this.cookieManager.loadCookies(this.page);
+        
+        if (cookiesLoaded) {
         log('🔍 Проверяем сохраненную авторизацию...');
+        
+        // Дополнительная задержка для стабильности
+        await delay(2000);
+        
         const isValid = await this.cookieManager.isAuthValid(this.page);
         
         if (isValid) {
-          log('✅ Сохраненная авторизация действительна! Логин не требуется.');
-          return true;
+            log('✅ Сохраненная авторизация действительна! Логин не требуется.');
+            return true;
         } else {
-          log('❌ Сохраненная авторизация истекла');
-          this.cookieManager.clearCookies();
+            log('❌ Сохраненная авторизация истекла или недействительна');
+            // НЕ УДАЛЯЕМ cookies сразу, может быть временная проблема
+            log('🔄 Попробуем использовать другой метод проверки...');
+            
+            // Альтернативная проверка - просто попробуем зайти на профильную страницу
+            try {
+            await this.page.goto('https://www.instagram.com/accounts/edit/', { 
+                waitUntil: 'networkidle2',
+                timeout: 15000 
+            });
+            
+            const urlAfterRedirect = this.page.url();
+            
+            if (!urlAfterRedirect.includes('/accounts/login/')) {
+                log('✅ Альтернативная проверка прошла - авторизация есть!');
+                return true;
+            } else {
+                log('❌ Альтернативная проверка не прошла - требуется авторизация');
+                this.cookieManager.clearCookies();
+            }
+            } catch (altError) {
+            log(`⚠️ Альтернативная проверка не удалась: ${altError}`, 'warn');
+            this.cookieManager.clearCookies();
+            }
         }
-      } else {
+        } else {
         log('📝 Сохраненных данных авторизации нет');
-      }
-      
-      return false;
+        }
+        
+        return false;
     } catch (error) {
-      log(`Ошибка проверки авторизации: ${error}`, 'error');
-      return false;
+        log(`❌ Ошибка проверки авторизации: ${error}`, 'error');
+        return false;
     }
-  }
+    }
 
   private async manualAuth(): Promise<void> {
     await this.page.goto('https://www.instagram.com/accounts/login/', {

@@ -33,19 +33,29 @@ router.post('/locations', async (req: Request, res: Response) => {
     
     // Проверяем какие локации есть в кэше
     for (const location of locations) {
-      const locationId = location.id;
-      
-      if (!forceRefresh && cache.hasCache(locationId)) {
+    const locationId = location.id;
+    
+    log(`🔍 Проверяем кэш для локации ${location.name} (ID: ${locationId})`);
+    
+    const cacheExists = cache.hasCache(locationId);
+    log(`   Файл кэша существует: ${cacheExists}`);
+    
+    if (cacheExists) {
+        const cachedInfluencers = cache.getCache(locationId);
+        log(`   Инфлюенсеров в кэше: ${cachedInfluencers.length}`);
+    }
+    
+    if (!forceRefresh && cacheExists) {
         const cachedInfluencers = cache.getCache(locationId);
         if (cachedInfluencers.length > 0) {
-          log(`📋 Используем кэш для локации ${location.name}: ${cachedInfluencers.length} инфлюенсеров`);
-          allInfluencers.push(...cachedInfluencers);
-          continue;
+        log(`📋 Используем кэш для локации ${location.name}: ${cachedInfluencers.length} инфлюенсеров`);
+        allInfluencers.push(...cachedInfluencers);
+        continue;
         }
-      }
-      
-      // Если кэша нет или принудительное обновление - добавляем в список для парсинга
-      locationsToProcess.push(location);
+    }
+    
+    // Если кэша нет или принудительное обновление - добавляем в список для парсинга
+    locationsToProcess.push(location);
     }
     
     log(`📊 Статистика: ${allInfluencers.length} из кэша, ${locationsToProcess.length} требуют парсинга`);
@@ -114,6 +124,8 @@ router.post('/locations', async (req: Request, res: Response) => {
         
         // ИСПРАВЛЕННАЯ ЛОГИКА - ВСЕГДА ДОБАВЛЯЕМ К ОБЩЕМУ МАССИВУ
         allInfluencers.push(...locationInfluencers);
+
+        log(`✅ Локация ${location.name} обработана, найдено: ${locationInfluencers.length} инфлюенсеров`);
         
         // Сохраняем в кэш только новых инфлюенсеров
         if (locationInfluencers.length > 0) {
@@ -173,6 +185,7 @@ router.post('/locations', async (req: Request, res: Response) => {
 });
 
 // backend/src/routes/searchRoutes.ts - ДОБАВИТЬ в конец файла перед export default router;
+// backend/src/routes/searchRoutes.ts - ДОБАВИТЬ в конец файла перед export default router;
 
 // Парсинг отдельного профиля
 router.post('/profile', async (req: Request, res: Response) => {
@@ -190,12 +203,12 @@ router.post('/profile', async (req: Request, res: Response) => {
 
     log(`🔍 Начинаем парсинг профиля @${username}`);
     
-    // Создаем парсер
+    // ИСПОЛЬЗУЕМ АВТОРИЗОВАННЫЙ РЕЖИМ (НЕ ГОСТЕВОЙ)
     const { LocationParser } = require('../parsers/locationParser');
-    locationParser = new LocationParser(guestMode);
+    locationParser = new LocationParser(false); // false = авторизованный режим
     await locationParser.init();
     
-    log(`✅ Парсер инициализирован для профиля @${username}`);
+    log(`✅ Парсер инициализирован для профиля @${username} (авторизованный режим)`);
     
     // Парсим профиль
     const profileData = await parseUserProfile(locationParser.page, username);
@@ -244,10 +257,20 @@ async function parseUserProfile(page: any, username: string) {
       timeout: 15000 
     });
     
-    // Проверяем что профиль существует
+    // Проверяем что профиль существует и мы авторизованы
     const pageTitle = await page.title();
     if (pageTitle.includes('Page Not Found') || pageTitle.includes('Sorry')) {
       log(`❌ Профиль @${username} не найден`);
+      return null;
+    }
+    
+    // ПРОВЕРЯЕМ НА ФОРМУ ЛОГИНА
+    const hasLoginForm = await page.evaluate(() => {
+      return !!document.querySelector('input[name="username"]');
+    });
+    
+    if (hasLoginForm) {
+      log(`❌ Требуется авторизация для профиля @${username} - форма логина обнаружена`);
       return null;
     }
     

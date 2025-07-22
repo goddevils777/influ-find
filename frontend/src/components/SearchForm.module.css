@@ -338,6 +338,115 @@
   text-align: center;
 }
 
+/* Теги выбранных локаций */
+.selectedLocationsTags {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
+}
+
+.tagsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tagsTitle {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.clearAllButton {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clearAllButton:hover {
+  background-color: #c82333;
+}
+
+.tagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.locationTag {
+  display: flex;
+  align-items: center;
+  background-color: #007bff;
+  color: white;
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 12px;
+  max-width: 200px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+}
+
+.locationTag:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.tagText {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 6px;
+  line-height: 1.2;
+}
+
+.tagRemoveButton {
+  background: rgba(255,255,255,0.3);
+  border: none;
+  color: white;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  transition: background-color 0.2s;
+}
+
+.tagRemoveButton:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+.tagsActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #dee2e6;
+}
+
+.tagsStats {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
 .errorMessage {
   margin-top: 10px;
   color: #dc3545;

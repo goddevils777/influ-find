@@ -171,8 +171,8 @@ export const useSearchForm = () => {
       console.log(`🔍 Парсинг профиля @${username}`);
       
       const response = await axios.post<ProfileResponse>('http://localhost:3001/api/search/profile', {
-        username: username,
-        guestMode: true
+        username: username
+        // Убираем guestMode - используем авторизованный режим
       });
       
       if (response.data.success && results) {

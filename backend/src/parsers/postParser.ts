@@ -1,3 +1,4 @@
+// backend/src/parsers/postParser.ts
 import { PARSER_CONFIG } from '../config/parser';
 import { delay, randomDelay, log, formatFollowersCount, generateUserId } from '../utils/helpers';
 import { Influencer } from '../models/influencer';
@@ -5,16 +6,19 @@ import { LocationCache } from './locationCache';
 import { HumanBehavior } from '../utils/humanBehavior';
 import { ActivityMonitor } from '../utils/activityMonitor';
 import { ParsingOffset } from '../utils/parsingOffset';
+import { ParsingCheckpoint, CheckpointData } from '../utils/parsingCheckpoint';
 
 export class PostParser {
   private page: any;
   private cache: LocationCache;
   private offset: ParsingOffset;
+  private checkpoint: ParsingCheckpoint;
 
   constructor(page: any) {
     this.page = page;
     this.cache = new LocationCache();
     this.offset = new ParsingOffset();
+    this.checkpoint = new ParsingCheckpoint();
   }
 
   // Проверка дубликатов
@@ -36,11 +40,55 @@ export class PostParser {
       return [];
     }
 
+    // ПРОВЕРЯЕМ CHECKPOINT ПЕРЕД НАЧАЛОМ
+    let resumeFromCheckpoint = false;
+    let allInfluencers: any[] = [];
+    let startPostIndex = 0;
+    
+    if (!forceRefresh) {
+      const savedCheckpoint = this.checkpoint.loadCheckpoint(locationId);
+      if (savedCheckpoint && savedCheckpoint.locationUrl === locationUrl) {
+        log(`🔄 ВОССТАНОВЛЕНИЕ ИЗ CHECKPOINT:`);
+        log(`   Последний обработанный пост: ${savedCheckpoint.currentPostIndex}/${savedCheckpoint.totalPosts}`);
+        log(`   Найдено ранее: ${savedCheckpoint.foundInfluencers.length} инфлюенсеров`);
+        log(`   Время сохранения: ${savedCheckpoint.timestamp}`);
+        
+        resumeFromCheckpoint = true;
+        allInfluencers = [...savedCheckpoint.foundInfluencers];
+        startPostIndex = savedCheckpoint.currentPostIndex;
+        
+        log(`✅ Продолжаем парсинг с поста ${startPostIndex + 1}`);
+      }
+    }
+
     // ПОЛУЧАЕМ ТЕКУЩИЙ OFFSET
-    const currentOffset = forceRefresh ? this.offset.getOffset(locationId) : 0;
+    const currentOffset = resumeFromCheckpoint ? startPostIndex : (forceRefresh ? 0 : this.offset.getOffset(locationId));
     const stats = this.offset.getStats(locationId);
     
-    log(`📊 Локация ${locationId}: уже обработано ${stats.totalParsed} пользователей, начинаем с поста ${currentOffset + 1}`);
+    log(`📊 Локация ${locationId}: начинаем с поста ${currentOffset + 1}`);
+
+    // УСТАНАВЛИВАЕМ ОБРАБОТЧИК ЭКСТРЕННОГО СОХРАНЕНИЯ
+    const emergencyHandler = () => {
+      log(`🚨 ЭКСТРЕННОЕ ЗАКРЫТИЕ ОБНАРУЖЕНО!`);
+      if (allInfluencers.length > 0) {
+        const emergencyData: CheckpointData = {
+          locationId,
+          locationUrl,
+          currentPostIndex: currentOffset,
+          totalPosts: maxPosts,
+          foundInfluencers: allInfluencers,
+          lastProcessedPost: locationUrl,
+          timestamp: new Date().toISOString(),
+          sessionId: ''
+        };
+        this.checkpoint.emergencySave(emergencyData);
+      }
+    };
+
+    // Обработчики для экстренного сохранения
+    process.on('SIGINT', emergencyHandler);
+    process.on('SIGTERM', emergencyHandler);
+    process.on('uncaughtException', emergencyHandler);
 
     try {
       // Проверяем активность
@@ -75,7 +123,7 @@ export class PostParser {
                 const href = link.href || '';
                 return href.includes('/p/') || href.includes('/reel/');
               })
-              .slice(offset, offset + maxPosts) // ПРИМЕНЯЕМ OFFSET
+              .slice(offset, offset + maxPosts)
               .map((link: any) => link.href);
             
             console.log(`Найдено ссылок с offset ${offset}: ${postLinks.length}`);
@@ -86,7 +134,6 @@ export class PostParser {
 
       log(`📸 Найдено ${posts.length} постов начиная с позиции ${currentOffset + 1}`);
 
-      // Если постов нет - логируем отладку
       if (posts.length === 0) {
         log(`❌ Посты не найдены, проверяем содержимое страницы...`);
         
@@ -110,15 +157,33 @@ export class PostParser {
         log(`📄 Текст: ${pageInfo.bodyText}`);
       }
 
-      const influencers: Partial<Influencer>[] = [];
+      const newInfluencers: Partial<Influencer>[] = [];
       let newUsersFound = 0;
       let skippedDuplicates = 0;
       
-      // ОБНОВЛЕННЫЙ ЦИКЛ С ПРОВЕРКОЙ ДУБЛИКАТОВ
+      // ОБНОВЛЕННЫЙ ЦИКЛ С CHECKPOINT'АМИ
       for (let i = 0; i < posts.length; i++) {
         try {
+          const currentPostIndex = currentOffset + i;
           const postUrl = posts[i];
-          log(`📄 Парсим пост ${currentOffset + i + 1}: ${postUrl}`);
+          
+          // АВТОСОХРАНЕНИЕ КАЖДЫЕ 3 ПОСТА
+          if (allInfluencers.length > 0 && currentPostIndex % 3 === 0) {
+            const checkpointData: CheckpointData = {
+              locationId,
+              locationUrl,
+              currentPostIndex,
+              totalPosts: posts.length,
+              foundInfluencers: allInfluencers,
+              lastProcessedPost: postUrl,
+              timestamp: new Date().toISOString(),
+              sessionId: ''
+            };
+            
+            this.checkpoint.autoSave(checkpointData, 3);
+          }
+
+          log(`📄 Парсим пост ${currentPostIndex + 1}: ${postUrl}`);
           
           await HumanBehavior.smartDelay();
           
@@ -147,81 +212,22 @@ export class PostParser {
               continue;
             }
             
-            if (influencers.find(inf => inf.username === username)) {
+            if (allInfluencers.find(inf => inf.username === username)) {
               log(`⏭️ Пропускаем @${username} - уже добавлен в текущей сессии`);
               continue;
             }
             
-            log(`🆕 Новый пользователь: @${username}, проверяем основную страницу...`);
-            
-            // ДОПОЛНИТЕЛЬНО: получаем био с основной страницы профиля
+            log(`🆕 Новый пользователь: @${username}, проверяем подписчиков...`);
+
+            // СНАЧАЛА БЫСТРО ПРОВЕРЯЕМ ПОДПИСЧИКОВ НА ГЛАВНОЙ СТРАНИЦЕ
             const mainProfileUrl = `https://www.instagram.com/${username}/`;
-            log(`🔍 Проверяем основную страницу профиля: ${mainProfileUrl}`);
+            log(`🔍 Быстрая проверка подписчиков: ${mainProfileUrl}`);
 
             await this.page.goto(mainProfileUrl, { waitUntil: 'networkidle2', timeout: 10000 });
             await HumanBehavior.smartDelay();
 
-            const mainPageBio = await this.page.evaluate(() => {
-              // Расширенный поиск био на главной странице
-              let bio = '';
-              const bioSelectors = [
-                'div[class*="_a6hd"] span',
-                'header section div span',
-                'div[data-testid="user-description"] span',
-                'span[class*="_ap3a"]',
-                'span[class*="_aaco"]',
-                '[role="text"] span',
-                'article header + div span'
-              ];
-
-              for (const selector of bioSelectors) {
-                const element = document.querySelector(selector);
-                if (element) {
-                  const text = element.textContent?.trim() || '';
-                  if (text.length > bio.length && 
-                      text.length > 10 && 
-                      text.length < 1000 && 
-                      !text.includes('подписчик') && 
-                      !text.includes('публикац') &&
-                      !text.match(/^\d+$/) &&
-                      !text.match(/^@\w+$/)) {
-                    bio = text;
-                  }
-                }
-              }
-
-              // Если не нашли, ищем в мета-тегах
-              if (!bio || bio.length < 20) {
-                const metaDescription = document.querySelector('meta[name="description"]');
-                if (metaDescription) {
-                  const metaText = metaDescription.getAttribute('content') || '';
-                  if (metaText.length > bio.length && metaText.length < 500) {
-                    bio = metaText;
-                  }
-                }
-              }
-
-              return bio;
-            });
-
-            log(`📝 Био с главной страницы: "${mainPageBio}"`);
-            
-            // Переходим на reels
-            const reelsUrl = `https://www.instagram.com/${username}/reels/`;
-            
-            await HumanBehavior.smartDelay();
-            log(`👀 Изучаем reels @${username}...`);
-            
-            await this.page.goto(reelsUrl, { waitUntil: 'networkidle2', timeout: 15000 });
-            
-            await HumanBehavior.smartDelay();
-            await HumanBehavior.humanScroll(this.page);
-            
-            // Извлекаем данные профиля с reels страницы
-            const profileData = await this.page.evaluate(() => {
-              console.log('=== ОТЛАДКА ПРОФИЛЯ НА REELS ===');
-              
-              // Подписчики
+            // Быстро извлекаем только количество подписчиков
+            const followersCheck = await this.page.evaluate(() => {
               let followersText = '0';
               const followerSelectors = [
                 'a[href*="/followers/"] span[title]',
@@ -240,7 +246,94 @@ export class PostParser {
                 }
               }
               
-              // Полное имя
+              return { followersText };
+            });
+
+            const followersCount = this.parseFollowersCount(followersCheck.followersText);
+            log(`👥 Подписчики @${username}: ${followersCount}`);
+
+            // РАННЯЯ ПРОВЕРКА - ЕСЛИ МАЛО ПОДПИСЧИКОВ, ПРОПУСКАЕМ
+            if (followersCount < PARSER_CONFIG.limits.minFollowers) {
+              log(`⏭️ Пропущен @${username} (${followersCount} подписчиков - меньше минимума) - БЕЗ ПАРСИНГА BIO И REELS`);
+              continue;
+            }
+
+            // ЕСЛИ ПОДПИСЧИКОВ ДОСТАТОЧНО - ПРОДОЛЖАЕМ ПОЛНЫЙ ПАРСИНГ
+            log(`✅ @${username} подходит (${followersCount} подписчиков), собираем полные данные...`);
+
+            // ТЕПЕРЬ СОБИРАЕМ BIO
+            log(`📝 Собираем био @${username}...`);
+            const mainPageBio = await this.page.evaluate(() => {
+              let bio = '';
+              const bioSelectors = [
+                'div[class*="_a6hd"] span',
+                'header section div span',
+                '[data-testid="user-description"] span',
+                'span[class*="_ap3a"]',
+                'span[class*="_aaco"]',
+                'article header div div span',
+                'header div span'
+              ];
+
+              for (const selector of bioSelectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                  const text = element.textContent?.trim() || '';
+                  if (text.length > bio.length && 
+                      text.length > 10 && 
+                      text.length < 1000 && 
+                      !text.includes('подписчик') && 
+                      !text.includes('публикац') &&
+                      !text.match(/^\d+$/) &&
+                      !text.match(/^@\w+$/)) {
+                    bio = text;
+                  }
+                }
+              }
+
+              if (!bio || bio.length < 20) {
+                const metaDescription = document.querySelector('meta[name="description"]');
+                if (metaDescription) {
+                  const metaText = metaDescription.getAttribute('content') || '';
+                  if (metaText.length > bio.length && metaText.length < 500) {
+                    bio = metaText;
+                  }
+                }
+              }
+
+              return bio;
+            });
+
+            log(`📝 Био: "${mainPageBio}"`);
+
+            // ПЕРЕХОДИМ НА REELS ДЛЯ СБОРА СТАТИСТИКИ
+            const reelsUrl = `https://www.instagram.com/${username}/reels/`;
+            log(`👀 Изучаем reels @${username}...`);
+
+            await HumanBehavior.smartDelay();
+            await this.page.goto(reelsUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+            await HumanBehavior.smartDelay();
+            await HumanBehavior.humanScroll(this.page);
+
+            // Извлекаем данные профиля с reels страницы
+            const profileData = await this.page.evaluate(() => {
+              let followersText = '0';
+              const followerSelectors = [
+                'a[href*="/followers/"] span[title]',
+                'a[href*="/followers/"] span',
+                '[data-testid="followers"] span',
+                'header section ul li:nth-child(2) span',
+                'header section ul li a span'
+              ];
+              
+              for (const selector of followerSelectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                  followersText = element.getAttribute('title') || element.textContent || '0';
+                  break;
+                }
+              }
+              
               let fullName = '';
               const nameSelectors = [
                 'header section div h2',
@@ -257,7 +350,6 @@ export class PostParser {
                 }
               }
               
-              // Reels статистика
               const reelsSelectors = [
                 'article a[href*="/reel/"]',
                 'a[href*="/reel/"]',
@@ -272,7 +364,7 @@ export class PostParser {
                 }
               }
               
-              const reelsStats = reelsVideos.slice(0, 4).map((reel: any, index: number) => {
+              const reelsStats = reelsVideos.slice(0, 4).map((reel: any) => {
                 const videoContainer = reel.closest('div') || reel.parentElement;
                 let views = '0';
                 
@@ -325,44 +417,40 @@ export class PostParser {
               };
             });
 
-            // Используем био с главной страницы как приоритетное
             const finalBio = mainPageBio || 'Описание не указано';
 
             log(`👤 Итоговые данные профиля @${username}:`);
-            log(`   Подписчики: ${profileData.followersText}`);
+            log(`   Подписчики: ${followersCount}`);
             log(`   Био: ${finalBio}`);
             log(`   Имя: ${profileData.fullName}`);
             log(`   Reels: ${profileData.reelsStats.length}`);
+
+            const finalFollowersCount = this.parseFollowersCount(profileData.followersText) || followersCount;
+
+            const influencer = {
+              username: username,
+              fullName: profileData.fullName || username,
+              followersCount: finalFollowersCount,
+              bio: finalBio,
+              cityId: locationId,
+              id: this.generateUserId(),
+              categories: ['Local'],
+              reelsViews: profileData.reelsStats.map((reel: any) => reel.views),
+              reelsCount: profileData.reelsStats.length,
+              createdAt: new Date(),
+              foundInLocation: {
+                id: locationId,
+                name: this.extractLocationName(locationUrl),
+                url: locationUrl
+              }
+            };
             
-            const followersCount = this.parseFollowersCount(profileData.followersText);
+            newInfluencers.push(influencer);
+            allInfluencers.push(influencer);
+            newUsersFound++;
             
-            if (followersCount >= PARSER_CONFIG.limits.minFollowers) {
-              const influencer = {
-                username: username,
-                fullName: profileData.fullName || username,
-                followersCount: followersCount,
-                bio: finalBio, // ИСПОЛЬЗУЕМ ПОЛНОЕ БИО
-                cityId: locationId,
-                id: this.generateUserId(),
-                categories: ['Local'],
-                reelsViews: profileData.reelsStats.map((reel: any) => reel.views),
-                reelsCount: profileData.reelsStats.length,
-                createdAt: new Date(),
-                foundInLocation: {
-                  id: locationId,
-                  name: this.extractLocationName(locationUrl),
-                  url: locationUrl
-                }
-              };
-              
-              influencers.push(influencer);
-              newUsersFound++;
-              
-              const viewsList = profileData.reelsStats.map((reel: any) => reel.views).join(', ');
-              log(`✅ Добавлен новый инфлюенсер: @${username} (${followersCount.toLocaleString()} подписчиков, просмотры: ${viewsList})`);
-            } else {
-              log(`⏭️ Пропущен @${username} (${followersCount} подписчиков - меньше минимума)`);
-            }
+            const viewsList = profileData.reelsStats.map((reel: any) => reel.views).join(', ');
+            log(`✅ Добавлен новый инфлюенсер: @${username} (${finalFollowersCount.toLocaleString()} подписчиков, просмотры: ${viewsList})`);
           }
           
         } catch (error) {
@@ -388,24 +476,43 @@ export class PostParser {
       const newOffset = currentOffset + posts.length;
       this.offset.saveOffset(locationId, newOffset, stats.totalParsed + newUsersFound);
       
-      // ОБНОВЛЯЕМ КЭШ
-      if (newUsersFound > 0) {
+      // ОБНОВЛЯЕМ КЭШ - ИСПРАВЛЕННАЯ ЛОГИКА
+      if (allInfluencers.length > 0) {
+        // Получаем существующие данные из кэша
         const existingInfluencers = this.cache.getCache(locationId) || [];
-        const combinedInfluencers = [...existingInfluencers, ...influencers];
-        this.cache.saveCache(locationId, combinedInfluencers);
+        
+        // Объединяем старые и новые, убирая дубликаты по username
+        const allInfluencersForLocation = [...existingInfluencers, ...allInfluencers];
+        const uniqueInfluencersForLocation = allInfluencersForLocation.filter((inf, index, self) => 
+          index === self.findIndex(i => i.username === inf.username)
+        );
+        
+        // Сохраняем объединенный список
+        this.cache.saveCache(locationId, uniqueInfluencersForLocation);
+        
+        log(`💾 Обновлен кэш для локации ${locationId}: ${uniqueInfluencersForLocation.length} инфлюенсеров (${newInfluencers.length} новых)`);
       }
+
+      // ОЧИЩАЕМ CHECKPOINT ПОСЛЕ УСПЕШНОГО ЗАВЕРШЕНИЯ
+      this.checkpoint.clearCheckpoint(locationId);
       
       log(`📊 Статистика парсинга:`);
       log(`   🆕 Найдено новых: ${newUsersFound}`);
       log(`   ⏭️ Пропущено дубликатов: ${skippedDuplicates}`);
       log(`   📍 Новый offset: ${newOffset}`);
+      log(`   📍 Всего инфлюенсеров: ${allInfluencers.length}`);
       log(`   ⏱️ Время выполнения: ${Date.now() - startTime}мс`);
       
-      return influencers;
+      return newInfluencers;
       
     } catch (error) {
       log(`❌ Ошибка парсинга локации: ${error}`, 'error');
       return [];
+    } finally {
+      // Убираем обработчики экстренного сохранения
+      process.removeListener('SIGINT', emergencyHandler);
+      process.removeListener('SIGTERM', emergencyHandler);
+      process.removeListener('uncaughtException', emergencyHandler);
     }
   }
 
@@ -416,7 +523,6 @@ export class PostParser {
 
   private extractLocationName(locationUrl: string): string {
     try {
-      // Извлекаем название из URL типа /explore/locations/123/location-name/
       const match = locationUrl.match(/\/explore\/locations\/\d+\/([^\/]+)\//);
       if (match) {
         return match[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
