@@ -3,22 +3,118 @@ import axios from 'axios';
 import './SearchForm.css';
 
 const SearchForm: React.FC = () => {
+console.log('🚀 НАЧАЛО: selectedLocations при загрузке компонента:', sessionStorage.getItem('selectedLocations'));
   const [countries, setCountries] = useState<any[]>([]);
+  
   const [cities, setCities] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+
+
   
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+
+  // ДОБАВЬ ЭТУ СТРОКУ ЗДЕСЬ:
+const [isRestoringFromStorage, setIsRestoringFromStorage] = useState(true);
   
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string>('');
 
+  // ДОБАВЬ НОВЫЕ useState ЗДЕСЬ:
+  const [searchingCountry, setSearchingCountry] = useState(false);
+  const [searchingCity, setSearchingCity] = useState(false);
+  const [countrySearchText, setCountrySearchText] = useState('');
+  const [citySearchText, setCitySearchText] = useState('');
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+
   // Загружаем страны при монтировании
-  useEffect(() => {
-    fetchCountries();
-  }, []);
+  // Загружаем страны при монтировании
+useEffect(() => {
+  fetchCountries();
+}, []);
+
+// Отдельный useEffect для восстановления состояния ПОСЛЕ загрузки стран
+useEffect(() => {
+  if (countries.length > 0) {
+    const savedCountry = sessionStorage.getItem('selectedCountry');
+    if (savedCountry) {
+      console.log('🌍 Восстанавливаем страну:', savedCountry);
+      setSelectedCountry(savedCountry);
+      fetchCities(savedCountry);
+    }
+  }
+}, [countries]);
+
+// Восстанавливаем город ПОСЛЕ загрузки городов
+useEffect(() => {
+  if (cities.length > 0) {
+    const savedCity = sessionStorage.getItem('selectedCity');
+    if (savedCity) {
+      setSelectedCity(savedCity);
+      fetchLocations(savedCity);
+    }
+  }
+}, [cities]);
+
+
+
+// Восстанавливаем локации ПОСЛЕ загрузки локаций с задержкой
+useEffect(() => {
+  console.log('🔍 useEffect для восстановления локаций сработал');
+  
+  if (locations.length > 0) {
+    console.log('✅ Локации загружены:', locations.length);
+    setTimeout(() => {
+      const savedLocations = sessionStorage.getItem('selectedLocations');
+      console.log('💾 Сохраненные локации из sessionStorage:', savedLocations);
+      
+      if (savedLocations && savedLocations !== '[]') {
+        try {
+          const parsed = JSON.parse(savedLocations);
+          console.log('📝 Восстанавливаем локации:', parsed);
+          setSelectedLocations(parsed);
+        } catch (error) {
+          console.error('❌ Ошибка парсинга:', error);
+        }
+      }
+      
+      // Разрешаем сохранение после восстановления
+      setIsRestoringFromStorage(false);
+    }, 100);
+  }
+}, [locations]);
+
+// Восстанавливаем результаты
+useEffect(() => {
+  const savedResults = sessionStorage.getItem('searchResults');
+  if (savedResults) {
+    setResults(JSON.parse(savedResults));
+  }
+}, []);
+
+
+
+useEffect(() => {
+  if (selectedCountry) {
+    sessionStorage.setItem('selectedCountry', selectedCountry);
+  }
+}, [selectedCountry]);
+
+useEffect(() => {
+  if (selectedCity) {
+    sessionStorage.setItem('selectedCity', selectedCity);
+  }
+}, [selectedCity]);
+
+
+useEffect(() => {
+  if (results) {
+    sessionStorage.setItem('searchResults', JSON.stringify(results));
+  }
+}, [results]);
 
   const fetchCountries = async () => {
     try {
@@ -35,7 +131,7 @@ const SearchForm: React.FC = () => {
       setCities((response.data as any).cities || []);
       setSelectedCity('');
       setLocations([]);
-      setSelectedLocations([]);
+    
     } catch (error) {
       console.error('Error fetching cities:', error);
       setCities([]);
@@ -46,7 +142,7 @@ const SearchForm: React.FC = () => {
     try {
       const response = await axios.get(`http://localhost:3001/api/locations/locations/${cityId}`);
       setLocations((response.data as any).locations || []);
-      setSelectedLocations([]);
+
     } catch (error) {
       console.error('Error fetching locations:', error);
       setLocations([]);
@@ -55,24 +151,30 @@ const SearchForm: React.FC = () => {
 
   const handleCountryChange = (countryCode: string) => {
     setSelectedCountry(countryCode);
-    if (countryCode) {
-      fetchCities(countryCode);
-    } else {
-      setCities([]);
-      setLocations([]);
-      setSelectedCity('');
-      setSelectedLocations([]);
-    }
+
+    
+  // ДОБАВЬ СОХРАНЕНИЕ:
+  if (countryCode) {
+    sessionStorage.setItem('selectedCountry', countryCode);
+    fetchCities(countryCode);
+  } else {
+    sessionStorage.removeItem('selectedCountry');
+    setCities([]);
+    setLocations([]);
+    setSelectedCity('');
+  }
   };
 
   const handleCityChange = (cityId: string) => {
     setSelectedCity(cityId);
-    if (cityId) {
-      fetchLocations(cityId);
-    } else {
-      setLocations([]);
-      setSelectedLocations([]);
-    }
+  // ДОБАВЬ СОХРАНЕНИЕ:
+  if (cityId) {
+    sessionStorage.setItem('selectedCity', cityId);
+    fetchLocations(cityId);
+  } else {
+    sessionStorage.removeItem('selectedCity');
+    setLocations([]);
+  }
   };
 
   const handleParseCity = async () => {
@@ -119,6 +221,10 @@ const SearchForm: React.FC = () => {
       });
       
       setResults(response.data);
+  
+
+      // ДОБАВЬ ЭТУ СТРОКУ:
+      sessionStorage.setItem('searchResults', JSON.stringify(response.data));
       
     } catch (error) {
       setError('Ошибка поиска инфлюенсеров. Попробуйте позже.');
@@ -163,41 +269,165 @@ const SearchForm: React.FC = () => {
     <div className="search-container">
       <h2>Поиск инфлюенсеров по локациям</h2>
       
-      {/* Выбор страны */}
-      <div className="form-group">
-        <label>Выберите страну:</label>
-        <select 
-          value={selectedCountry} 
-          onChange={(e) => handleCountryChange(e.target.value)}
-          className="search-input"
-        >
-          <option value="">-- Выберите страну --</option>
-          {countries.map(country => (
-            <option key={country.code} value={country.code}>
-              {country.name} ({country.code})
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Выбор страны С ПОИСКОМ */}
+<div className="form-group">
+  <label>Выберите страну:</label>
+  <div style={{ position: 'relative' }}>
+   <input
+  type="text"
+  placeholder="Введите название страны..."
+  value={countrySearchText}
+  onChange={(e) => {
+    const searchText = e.target.value;
+    setCountrySearchText(searchText);
+    setShowCountryDropdown(true);
+    
+    if (selectedCountry) {
+      setSelectedCountry('');
+      setCities([]);
+      setLocations([]);
+      setSelectedCity('');
+    }
+  }}
+  onFocus={() => {
+    setShowCountryDropdown(true);
+    // Если поле пустое, показываем все страны
+    if (!countrySearchText) {
+      setCountrySearchText('');
+    }
+  }}
+  onBlur={() => {
+    setTimeout(() => {
+      setShowCountryDropdown(false);
+      const foundCountry = countries.find(country => 
+        country.name.toLowerCase() === countrySearchText.toLowerCase()
+      );
+      if (foundCountry && !selectedCountry) {
+        handleCountryChange(foundCountry.code);
+        setCountrySearchText(foundCountry.name);
+      }
+    }, 200);
+  }}
+  className="search-input"
+  style={{ width: '100%' }}
+/>
 
-      {/* Выбор города */}
-      {selectedCountry && (
-        <div className="form-group">
-          <label>Выберите город:</label>
-          <select 
-            value={selectedCity} 
-            onChange={(e) => handleCityChange(e.target.value)}
-            className="search-input"
-          >
-            <option value="">-- Выберите город --</option>
-            {cities.map(city => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
+{/* Показываем список при фокусе ИЛИ при печатании */}
+{showCountryDropdown && (
+  <div style={{
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: '200px',
+    overflowY: 'auto',
+    border: '1px solid #ccc',
+    backgroundColor: 'white',
+    zIndex: 1000,
+    borderRadius: '4px'
+  }}>
+    {countries
+      .filter(country => 
+        !countrySearchText || 
+        country.name.toLowerCase().includes(countrySearchText.toLowerCase())
+      )
+      .slice(0, 10)
+      .map((country, index) => (
+        <div
+          key={`country-search-${country.code}-${index}`}
+          onClick={() => {
+            handleCountryChange(country.code);
+            setCountrySearchText(country.name);
+            setShowCountryDropdown(false);
+          }}
+          className="dropdown-item"
+        >
+          {country.name} ({country.code})
         </div>
-      )}
+      ))}
+  </div>
+)}
+  </div>
+</div>
+
+{/* Выбор города С ПОИСКОМ */}
+{selectedCountry && (
+  <div className="form-group">
+    <label>Выберите город:</label>
+    <div style={{ position: 'relative' }}>
+    <input
+  type="text"
+  placeholder="Введите название города..."
+  value={citySearchText}
+  onChange={(e) => {
+    const searchText = e.target.value;
+    setCitySearchText(searchText);
+    setShowCityDropdown(true);
+    
+    if (selectedCity) {
+      setSelectedCity('');
+      setLocations([]);
+    }
+  }}
+  onFocus={() => {
+    setShowCityDropdown(true);
+    if (!citySearchText) {
+      setCitySearchText('');
+    }
+  }}
+  onBlur={() => {
+    setTimeout(() => {
+      setShowCityDropdown(false);
+      const foundCity = cities.find(city => 
+        city.name.toLowerCase() === citySearchText.toLowerCase()
+      );
+      if (foundCity && !selectedCity) {
+        handleCityChange(foundCity.id);
+        setCitySearchText(foundCity.name);
+      }
+    }, 200);
+  }}
+  className="search-input"
+  style={{ width: '100%' }}
+/>
+
+{showCityDropdown && cities.length > 0 && (
+  <div style={{
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: '200px',
+    overflowY: 'auto',
+    border: '1px solid #ccc',
+    backgroundColor: 'white',
+    zIndex: 1000,
+    borderRadius: '4px'
+  }}>
+    {cities
+      .filter(city => 
+        !citySearchText || 
+        city.name.toLowerCase().includes(citySearchText.toLowerCase())
+      )
+      .slice(0, 15)
+      .map((city, index) => (
+        <div
+          key={`city-search-${city.id}-${index}`}
+          onClick={() => {
+            handleCityChange(city.id);
+            setCitySearchText(city.name);
+            setShowCityDropdown(false);
+          }}
+          className="dropdown-item"
+        >
+          {city.name}
+        </div>
+      ))}
+  </div>
+)}
+    </div>
+  </div>
+)}
 
       {/* Показать локации или запустить парсинг */}
       {selectedCity && (
@@ -221,22 +451,35 @@ const SearchForm: React.FC = () => {
               <div className="locations-list">
                 <h4>Выберите локации для парсинга постов:</h4>
                 <div style={{ maxHeight: '200px', overflowY: 'scroll', border: '1px solid #ccc', padding: '10px' }}>
-                  {locations.map((location, index) => (
-                    <label key={`${location.id}-${index}`} style={{ display: 'block', margin: '5px 0' }}>
-                      <input 
-                        type="checkbox"
-                        checked={selectedLocations.includes(location.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLocations([...selectedLocations, location.id]);
-                          } else {
-                            setSelectedLocations(selectedLocations.filter(id => id !== location.id));
-                          }
-                        }}
-                      />
-                      <span style={{ marginLeft: '8px' }}>{location.name}</span>
-                    </label>
-                  ))}
+                 {locations.map((location, index) => {
+                      const isChecked = selectedLocations.includes(location.id);
+                   
+                      
+                      return (
+                        <label key={`location-${location.id}-${index}`} style={{ display: 'block', margin: '5px 0' }}>
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+onChange={(e) => {
+  if (e.target.checked) {
+    setSelectedLocations(prev => {
+      const newSelected = [...prev, location.id];
+      sessionStorage.setItem('selectedLocations', JSON.stringify(newSelected));
+      return newSelected;
+    });
+  } else {
+    setSelectedLocations(prev => {
+      const newSelected = prev.filter(id => id !== location.id);
+      sessionStorage.setItem('selectedLocations', JSON.stringify(newSelected));
+      return newSelected;
+    });
+  }
+}}
+                        />
+                        <span style={{ marginLeft: '8px' }}>{location.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -269,43 +512,138 @@ const SearchForm: React.FC = () => {
         </div>
       )}
 
-      {/* Отображение результатов */}
-      {results && (
-        <div className="results-container" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
-          <h3>Результаты поиска</h3>
-          <p>
-            <strong>Город:</strong> {results.data.city} <br/>
-            <strong>Локаций обработано:</strong> {results.data.locationsSearched} <br/>
-            <strong>Найдено инфлюенсеров:</strong> {results.data.totalFound}
-          </p>
-
-          {results.data.influencers.length > 0 ? (
-            <div className="influencers-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px', marginTop: '15px' }}>
-              {results.data.influencers.map((influencer: any, index: number) => (
-                <div key={index} className="influencer-card" style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px', 
-                  padding: '12px', 
-                  backgroundColor: 'white' 
-                }}>
-                  <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>@{influencer.username}</h4>
-                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                    👥 {influencer.followersCount?.toLocaleString()} подписчиков
-                  </p>
-                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                    📊 Просмотры reels: {influencer.reelsViews ? influencer.reelsViews.join(', ') : 'Нет данных'}
-                  </p>
-                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                    📝 {influencer.bio?.substring(0, 100)}...
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>Инфлюенсеры не найдены в выбранных локациях</p>
-          )}
+   {/* Отображение результатов */}
+{results && (
+  <div className="results-container" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
+    <h3>Результаты поиска</h3>
+    <p>
+      <strong>Город:</strong> 
+      <a 
+        href={`https://www.instagram.com/explore/locations/?search=${results.data.city}`}
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{ color: '#007bff', textDecoration: 'none', marginLeft: '5px' }}
+      >
+        {results.data.city} 🔗
+      </a>
+      <br/>
+      
+      <strong>Локаций обработано:</strong> {results.data.locationsSearched}
+      <br/>
+      
+      {/* ОБНОВЛЕННЫЙ БЛОК СО ССЫЛКАМИ ЧЕРЕЗ ЗАПЯТУЮ */}
+      {results.data.processedLocations && (
+        <div style={{ marginTop: '5px' }}>
+          <strong>Обработанные локации:</strong>{' '}
+          {results.data.processedLocations.map((location: any, index: number) => (
+            <span key={index}>
+              <a 
+                href={location.url}
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: '#007bff', textDecoration: 'none' }}
+              >
+                {location.name} 🔗
+              </a>
+              {index < results.data.processedLocations.length - 1 && ', '}
+            </span>
+          ))}
         </div>
       )}
+      
+      <br/>
+      <strong>Найдено инфлюенсеров:</strong> {results.data.totalFound}
+    </p>
+
+    {results.data.influencers.length > 0 ? (
+      <div className="influencers-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px', marginTop: '15px' }}>
+        {results.data.influencers.map((influencer: any, index: number) => (
+          <div key={index} className="influencer-card" style={{ 
+            border: '1px solid #ddd', 
+            borderRadius: '8px', 
+            padding: '15px', 
+            backgroundColor: 'white',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            {/* ЗАГОЛОВОК С ИМЕНЕМ И ЛОКАЦИЕЙ */}
+            <div style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#333' }}>
+                <a 
+                  href={`https://www.instagram.com/${influencer.username}/`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ color: '#333', textDecoration: 'none' }}
+                >
+                  @{influencer.username} 🔗
+                </a>
+              </h4>
+              
+              {/* НАЗВАНИЕ ЛОКАЦИИ ГДЕ НАЙДЕН */}
+              {influencer.foundInLocation && (
+                <p style={{ margin: '0', fontSize: '12px', color: '#28a745', fontWeight: 'bold' }}>
+                  📍 Найден в: 
+                  <a 
+                    href={influencer.foundInLocation.url}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: '#28a745', textDecoration: 'none', marginLeft: '3px' }}
+                  >
+                    {influencer.foundInLocation.name} 🔗
+                  </a>
+                </p>
+              )}
+            </div>
+            
+            {/* СТАТИСТИКА */}
+            <div style={{ marginBottom: '10px' }}>
+              <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+                👥 <strong>{influencer.followersCount?.toLocaleString()}</strong> подписчиков
+              </p>
+              
+              <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+                📊 <strong>Просмотры reels:</strong> {influencer.reelsViews ? influencer.reelsViews.join(', ') : 'Нет данных'}
+              </p>
+            </div>
+            
+            {/* ПОЛНОЕ ОПИСАНИЕ БЕЗ ОБРЕЗАНИЯ */}
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '10px', 
+              backgroundColor: '#f8f9fa', 
+              borderRadius: '5px',
+              borderLeft: '3px solid #007bff'
+            }}>
+              <p style={{ 
+                margin: '0', 
+                fontSize: '13px', 
+                color: '#444', 
+                lineHeight: '1.4',
+                fontStyle: 'italic'
+              }}>
+                📝 <strong>Описание:</strong><br/>
+                {influencer.bio || 'Описание не указано'}
+              </p>
+            </div>
+            
+            {/* ПОЛНОЕ ИМЯ ЕСЛИ ЕСТЬ */}
+            {influencer.fullName && influencer.fullName !== influencer.username && (
+              <p style={{ 
+                margin: '8px 0 0 0', 
+                fontSize: '12px', 
+                color: '#888',
+                textAlign: 'center'
+              }}>
+                <strong>Полное имя:</strong> {influencer.fullName}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p>Инфлюенсеры не найдены в выбранных локациях</p>
+    )}
+  </div>
+)}
 
       {error && (
         <div style={{ marginTop: '10px', color: 'red', fontSize: '14px' }}>

@@ -27,16 +27,14 @@ export class LocationParser {
       }
 
       // Настройка браузера
-    const launchOptions: any = {
-    headless: false,
-    args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--start-maximized'
-        // УБЕРИ '--incognito' ОТСЮДА
-    ]
-    };
+const launchOptions: any = {
+  headless: false,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox'
+  ]
+  // УБИРАЕМ все остальные args!
+};
 
 
 
@@ -45,6 +43,8 @@ export class LocationParser {
     // ЗАМЕНИ СОЗДАНИЕ СТРАНИЦЫ НА:
     const context = await this.browser.createBrowserContext();
     this.page = await context.newPage();
+
+
 
 
     // ДОБАВЬ ОЧИСТКУ ДАННЫХ:
@@ -313,4 +313,66 @@ async findTopLocations(cityName: string): Promise<string[]> {
   getAuthStatus() {
     return { manual: true, authenticated: true };
   }
+
+  private async setupRandomHeaders(): Promise<void> {
+  // Случайные заголовки как у реального браузера
+  const headers = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9,uk;q=0.8,ru;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': Math.random() > 0.5 ? '1' : '0', // Случайное Do Not Track
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Cache-Control': 'max-age=0',
+  };
+
+  await this.page.setExtraHTTPHeaders(headers);
+  
+  // Устанавливаем случайный timezone
+  const timezones = [
+    'Europe/Kiev', 'Europe/Warsaw', 'Europe/Berlin', 
+    'America/New_York', 'Europe/London', 'Europe/Paris'
+  ];
+  const randomTZ = timezones[Math.floor(Math.random() * timezones.length)];
+  
+  await this.page.emulateTimezone(randomTZ);
+  log(`🌍 Используем timezone: ${randomTZ}`);
+}
+
+private async checkForCaptcha(): Promise<boolean> {
+  try {
+    // Ищем признаки капчи или блокировки
+    const captchaSelectors = [
+      '[data-testid="challenge"]',
+      '.challenge_box',
+      'input[name="captcha"]',
+      'iframe[title*="captcha"]',
+      'div[class*="captcha"]'
+    ];
+    
+    for (const selector of captchaSelectors) {
+      const element = await this.page.$(selector);
+      if (element) {
+        log('🚫 Обнаружена капча или блокировка!', 'warn');
+        return true;
+      }
+    }
+    
+    // Проверяем текст на странице
+    const pageText = await this.page.$eval('body', (el: any) => el.textContent).catch(() => '');
+    const blockWords = ['challenge', 'captcha', 'blocked', 'temporarily unavailable'];
+    
+    if (blockWords.some(word => pageText.toLowerCase().includes(word))) {
+      log('🚫 Обнаружена блокировка по тексту!', 'warn');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    return false;
+  }
+}
 }

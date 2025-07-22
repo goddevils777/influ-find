@@ -86,31 +86,33 @@ router.post('/locations', async (req: Request, res: Response) => {
       try {
         log(`📍 Парсинг локации ${i + 1}/${locationsToProcess.length}: ${location.name}`);
         
-        const postParser = new PostParser(locationParser.page);
-        const locationInfluencers = await postParser.parseLocationPosts(location.url, 10, forceRefresh);
+        // ИСПРАВЛЯЕМ URL ЛОКАЦИИ
+        let locationUrl = location.url;
         
-
-        // При принудительном обновлении - ВСЕГДА парсим заново
-        if (forceRefresh) {
-        log(`🔄 Принудительное обновление - парсим локацию заново: ${location.name}`);
-        // locationInfluencers уже содержит новые данные после парсинга
-        
-        const existingInfluencers = cache.getCache(location.id) || [];
-        const newInfluencers = locationInfluencers.filter((newInf: any) =>
-            !existingInfluencers.find((existing: any) => existing.username === newInf.username)
-        );
-        
-        if (newInfluencers.length > 0) {
-            log(`🆕 Найдено ${newInfluencers.length} новых инфлюенсеров`);
-            const combinedInfluencers = [...existingInfluencers, ...newInfluencers];
-            cache.saveCache(location.id, combinedInfluencers);
-            allInfluencers.push(...combinedInfluencers);
-        } else {
-            log(`📋 Новых инфлюенсеров не найдено, используем существующих`);
-            allInfluencers.push(...existingInfluencers);
+        // Убираем /nearby/ если есть
+        if (locationUrl.includes('/nearby/')) {
+          locationUrl = locationUrl.replace('/nearby/', '/');
+          log(`🔧 Исправлен URL с /nearby/: ${locationUrl}`);
         }
+        
+        // Убираем лишние слеши в конце
+        locationUrl = locationUrl.replace(/\/+$/, '/');
+        
+        // Проверяем что URL правильный формат
+        if (!locationUrl.match(/\/explore\/locations\/\d+\/[^\/]+\/$/)) {
+          log(`⚠️ Подозрительный формат URL: ${locationUrl}`, 'warn');
+        }
+        
+        const postParser = new PostParser(locationParser.page);
+        const locationInfluencers = await postParser.parseLocationPosts(locationUrl, 10, forceRefresh);
+        
+        // УПРОЩЕННАЯ ЛОГИКА БЕЗ ДУБЛИРОВАНИЯ
+        if (forceRefresh) {
+          log(`🔄 Принудительное обновление - заменяем кэш для локации ${location.name}`);
+          cache.saveCache(location.id, locationInfluencers);
+          allInfluencers.push(...locationInfluencers);
         } else {
-        allInfluencers.push(...locationInfluencers);
+          allInfluencers.push(...locationInfluencers);
         }
         
         log(`✅ Локация ${location.name} обработана`);
@@ -128,16 +130,24 @@ router.post('/locations', async (req: Request, res: Response) => {
     
     log(`🎉 Парсинг завершен! Найдено уникальных инфлюенсеров: ${uniqueInfluencers.length}`);
     
+    // В конце файла, где формируется ответ, замени:
     res.json({
-      success: true,
-      data: {
+    success: true,
+    data: {
         city: cityName,
         locationsSearched: locations.length,
         influencers: uniqueInfluencers,
         totalFound: uniqueInfluencers.length,
         newlyParsed: locationsToProcess.length,
-        fromCache: locationsToProcess.length === 0
-      }
+        fromCache: locationsToProcess.length === 0,
+        
+        // ДОБАВЬ ЭТИ НОВЫЕ ПОЛЯ:
+        processedLocations: locations.map((loc: any) => ({
+        name: loc.name,
+        url: loc.url,
+        id: loc.id
+        }))
+    }
     });
     
   } catch (error) {
