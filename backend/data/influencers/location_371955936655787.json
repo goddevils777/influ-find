@@ -1,0 +1,55 @@
+{
+  "locationId": "371955936655787",
+  "influencers": [
+    {
+      "username": "mojoskygarden_lutsk",
+      "fullName": "mojoskygarden_lutsk",
+      "followersCount": 7107,
+      "bio": "пн-нд 13:00-00:00🍳СНІДАНКИ:пн-пт 7:00-11:00сб-нд 8:00-12:00... more",
+      "cityId": "371955936655787",
+      "id": "user_nu5ys31wb",
+      "categories": [
+        "Local"
+      ],
+      "reelsViews": [
+        "4,785",
+        "4,530",
+        "3,233",
+        "3,526"
+      ],
+      "reelsCount": 4,
+      "createdAt": "2025-07-23T07:50:05.215Z",
+      "foundInLocation": {
+        "id": "371955936655787",
+        "name": "Mojo Sky Garden",
+        "url": "https://www.instagram.com/explore/locations/371955936655787/mojo-sky-garden/"
+      }
+    },
+    {
+      "username": "sheyferok_yulia",
+      "fullName": "sheyferok_yulia",
+      "followersCount": 8657,
+      "bio": "Нарощення вій-@sheyferok_lashes🌸",
+      "cityId": "371955936655787",
+      "id": "user_u2jbex0if",
+      "categories": [
+        "Local"
+      ],
+      "reelsViews": [
+        "2,350",
+        "1,476",
+        "863",
+        "617"
+      ],
+      "reelsCount": 4,
+      "createdAt": "2025-07-23T07:51:07.341Z",
+      "foundInLocation": {
+        "id": "371955936655787",
+        "name": "Mojo Sky Garden",
+        "url": "https://www.instagram.com/explore/locations/371955936655787/mojo-sky-garden/"
+      }
+    }
+  ],
+  "cachedAt": "2025-07-23T07:53:17.555Z",
+  "count": 2
+}

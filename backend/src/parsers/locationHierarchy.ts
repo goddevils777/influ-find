@@ -337,18 +337,51 @@ export class LocationHierarchy {
       }
     }
     
+    // ЗАМЕНИТЬ последнюю часть метода parseLocationsInCity (после парсинга всех страниц):
+
     // Финальная статистика
     const finalStats = this.requestTracker.getStats();
     log(`📊 Город ${cityName} завершен. Всего запросов в сессии: ${finalStats.totalRequests}`);
-    
-    // Сохраняем локации в файл с улучшенным именованием
+
+    // НОВАЯ ЛОГИКА: загружаем существующие локации и объединяем с новыми
     const sanitizedCityName = cityName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     const locationsFile = path.join(this.dataPath, `locations_${cityId}_${sanitizedCityName}.json`);
-    fs.writeFileSync(locationsFile, JSON.stringify(locations, null, 2));
-    
-    log(`✅ Парсинг локаций ${cityName} завершен. Найдено ${locations.length} локаций`);
-    
-    return locations;
+
+    let existingLocations: Location[] = [];
+    if (fs.existsSync(locationsFile)) {
+    try {
+        const existingData = fs.readFileSync(locationsFile, 'utf8');
+        existingLocations = JSON.parse(existingData);
+        log(`📋 Найдено ${existingLocations.length} существующих локаций для ${cityName}`);
+    } catch (error) {
+        log(`⚠️ Ошибка чтения существующих локаций: ${error}`, 'warn');
+    }
+    }
+
+    // Объединяем существующие и новые локации, убираем дубликаты
+    const allLocations = [...existingLocations];
+    let newLocationsCount = 0;
+
+    for (const newLocation of locations) {
+    const exists = existingLocations.some(existing => existing.id === newLocation.id);
+    if (!exists) {
+        allLocations.push(newLocation);
+        newLocationsCount++;
+    }
+    }
+
+    log(`✅ Результат объединения:`);
+    log(`   Было локаций: ${existingLocations.length}`);
+    log(`   Найдено новых: ${locations.length}`);
+    log(`   Добавлено уникальных: ${newLocationsCount}`);
+    log(`   Итого локаций: ${allLocations.length}`);
+
+    // Сохраняем объединенный список
+    fs.writeFileSync(locationsFile, JSON.stringify(allLocations, null, 2));
+
+    log(`✅ Парсинг локаций ${cityName} завершен. Сохранено ${allLocations.length} уникальных локаций`);
+
+    return allLocations;
   }
 
   // Получить локации для города из сохраненных данных

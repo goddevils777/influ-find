@@ -39,8 +39,7 @@ export const useSearchForm = () => {
     try {
       const response = await axios.get<{cities: City[]}>(`http://localhost:3001/api/locations/cities/${countryCode}`);
       setCities(response.data.cities || []);
-      setSelectedCity('');
-      setLocations([]);
+      // НЕ сбрасываем selectedCity и locations здесь - они сбросятся в handleCityChange
     } catch (error) {
       console.error('Error fetching cities:', error);
       setCities([]);
@@ -57,33 +56,7 @@ export const useSearchForm = () => {
     }
   };
 
-  // Handlers
-  const handleCountryChange = (countryCode: string) => {
-    setSelectedCountry(countryCode);
-    
-    if (countryCode) {
-      sessionStorage.setItem('selectedCountry', countryCode);
-      fetchCities(countryCode);
-    } else {
-      sessionStorage.removeItem('selectedCountry');
-      setCities([]);
-      setLocations([]);
-      setSelectedCity('');
-    }
-  };
-
-  const handleCityChange = (cityId: string) => {
-    setSelectedCity(cityId);
-    
-    if (cityId) {
-      sessionStorage.setItem('selectedCity', cityId);
-      fetchLocations(cityId);
-    } else {
-      sessionStorage.removeItem('selectedCity');
-      setLocations([]);
-    }
-  };
-
+  // Парсинг локаций города
   const handleParseCity = async () => {
     if (!selectedCity) return;
     
@@ -106,35 +79,31 @@ export const useSearchForm = () => {
     }
   };
 
-  const handleSearchInfluencers = async () => {
-    if (selectedLocations.length === 0) return;
-    
-    setLoading(true);
-    setError('');
-    setResults(null);
-    
+  // Парсинг городов страны
+  const parseCitiesInCountry = async (countryCode: string, countryName: string) => {
     try {
-      const selectedCityData = cities.find(city => city.id === selectedCity);
-      const selectedLocationData = locations.filter(loc => selectedLocations.includes(loc.id));
+      setLoading(true);
+      setError('');
       
-      const response = await axios.post<SearchResponse>('http://localhost:3001/api/search/locations', {
-        cityName: selectedCityData?.name,
-        cityId: selectedCity,
-        locations: selectedLocationData,
-        guestMode: true
+      const response = await axios.post<{success: boolean, message: string}>(`http://localhost:3001/api/locations/parsing/cities/${countryCode}`, {
+        countryName: countryName
       });
       
-      setResults(response.data);
-      sessionStorage.setItem('searchResults', JSON.stringify(response.data));
+      if (response.data.success) {
+        // После парсинга обновляем список городов
+        await fetchCities(countryCode);
+        setError(`✅ Города страны ${countryName} успешно спарсены`);
+      }
     } catch (error) {
-      setError('Ошибка поиска инфлюенсеров. Попробуйте позже.');
-      console.error('Search error:', error);
+      console.error('Error parsing cities:', error);
+      setError('Ошибка парсинга городов');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForceRefresh = async () => {
+  // Поиск инфлюенсеров
+  const handleSearch = async (forceRefresh: boolean = false) => {
     if (selectedLocations.length === 0) return;
     
     setLoading(true);
@@ -150,13 +119,14 @@ export const useSearchForm = () => {
         cityId: selectedCity,
         locations: selectedLocationData,
         guestMode: true,
-        forceRefresh: true
+        forceRefresh: forceRefresh
       });
       
       setResults(response.data);
+      sessionStorage.setItem('searchResults', JSON.stringify(response.data));
     } catch (error) {
-      setError('Ошибка принудительного обновления. Попробуйте позже.');
-      console.error('Force refresh error:', error);
+      setError('Ошибка поиска инфлюенсеров. Попробуйте позже.');
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
@@ -176,20 +146,38 @@ export const useSearchForm = () => {
       });
       
       if (response.data.success && results) {
+        console.log(`✅ Получены новые данные профиля:`, response.data.data);
+        
         // Обновляем данные инфлюенсера в результатах
         const updatedInfluencers = results.data.influencers.map((inf) => 
-          inf.username === username ? { ...inf, ...response.data.data } : inf
+          inf.username === username ? { 
+            ...inf, 
+            ...response.data.data,
+            // Убеждаемся что аватарка обновляется
+            avatarUrl: response.data.data.avatarUrl || inf.avatarUrl
+          } : inf
         );
         
-        setResults({
+        console.log(`📊 Обновлено инфлюенсеров в результатах: ${updatedInfluencers.length}`);
+        
+        const updatedResults = {
           ...results,
           data: {
             ...results.data,
             influencers: updatedInfluencers
           }
-        });
+        };
+        
+        setResults(updatedResults);
+        
+        // Также обновляем в sessionStorage
+        sessionStorage.setItem('searchResults', JSON.stringify(updatedResults));
+        
+        console.log(`✅ Профиль @${username} обновлен в интерфейсе`);
         
         return response.data.data;
+      } else {
+        console.error(`❌ Не удалось получить данные профиля @${username}`);
       }
     } catch (error) {
       setError(`Ошибка парсинга профиля @${username}`);
@@ -219,18 +207,24 @@ export const useSearchForm = () => {
   }, [countries]);
 
   useEffect(() => {
-    if (cities.length > 0) {
+    if (cities.length > 0 && selectedCountry) {
       const savedCity = sessionStorage.getItem('selectedCity');
       if (savedCity) {
-        setSelectedCity(savedCity);
+        // Проверяем что сохраненный город принадлежит выбранной стране
         const cityData = cities.find(city => city.id === savedCity);
         if (cityData) {
+          setSelectedCity(savedCity);
           setCitySearchText(cityData.name);
+          fetchLocations(savedCity);
+        } else {
+          // Если город не найден в текущей стране - сбрасываем
+          sessionStorage.removeItem('selectedCity');
+          setSelectedCity('');
+          setCitySearchText('');
         }
-        fetchLocations(savedCity);
       }
     }
-  }, [cities]);
+  }, [cities, selectedCountry]);
 
   useEffect(() => {
     if (locations.length > 0) {
@@ -257,35 +251,43 @@ export const useSearchForm = () => {
   }, []);
 
   return {
-    // States
+    // Состояния
     countries,
     cities,
     locations,
     selectedCountry,
     selectedCity,
     selectedLocations,
-    setSelectedLocations,
-    isRestoringFromStorage,
     loading,
     results,
     error,
     countrySearchText,
-    setCountrySearchText,
     citySearchText,
-    setCitySearchText,
     showCountryDropdown,
-    setShowCountryDropdown,
     showCityDropdown,
-    setShowCityDropdown,
     locationSearchText,
+    isRestoringFromStorage,
+    
+    // Сеттеры
+    setSelectedCountry,
+    setSelectedCity,
+    setSelectedLocations,
+    setCountrySearchText,
+    setCitySearchText,
+    setShowCountryDropdown,
+    setShowCityDropdown,
     setLocationSearchText,
     
-    // Handlers
-    handleCountryChange,
-    handleCityChange,
-    handleParseCity,
-    handleSearchInfluencers,
-    handleForceRefresh,
-    handleParseProfile
+    // Основные функции
+    handleSearch,
+    handleParseProfile,
+    
+    // API функции
+    fetchCountries,
+    fetchCities,
+    fetchLocations,
+    
+    // Новые функции парсинга
+    parseCitiesInCountry
   };
 };

@@ -58,7 +58,39 @@ router.post('/locations', async (req: Request, res: Response) => {
     locationsToProcess.push(location);
     }
     
-    log(`📊 Статистика: ${allInfluencers.length} из кэша, ${locationsToProcess.length} требуют парсинга`);
+    // ДОБАВЬ ПОСЛЕ СТРОКИ: log(`📊 Статистика: ${allInfluencers.length} из кэша, ${locationsToProcess.length} требуют парсинга`);
+
+    // НОВАЯ ЛОГИКА: Если НЕ принудительное обновление - возвращаем только то что есть в кэше
+    if (!forceRefresh) {
+    log(`📋 Обычный поиск - показываем только из кэша`);
+    
+    const uniqueInfluencers = allInfluencers.filter((inf, index, self) => 
+        index === self.findIndex(i => i.username === inf.username)
+    );
+    
+    return res.json({
+        success: true,
+        data: {
+        city: cityName,
+        locationsSearched: locations.length,
+        influencers: uniqueInfluencers,
+        totalFound: uniqueInfluencers.length,
+        newlyParsed: 0,
+        fromCache: true,
+        message: uniqueInfluencers.length === 0 ? 
+            'В кэше нет инфлюенсеров. Используйте "Спарсить новых" для поиска.' : 
+            `Показано ${uniqueInfluencers.length} инфлюенсеров из кэша`,
+        processedLocations: locations.map((loc: any) => ({
+            name: loc.name,
+            url: loc.url,
+            id: loc.id
+        }))
+        }
+    });
+    }
+
+// Если дошли сюда - значит forceRefresh=true, продолжаем парсинг
+log(`🔄 Принудительное обновление - запускаем парсинг ${locationsToProcess.length} локаций`);
     
     // ЕСЛИ ВСЕ ЛОКАЦИИ В КЭШЕ - НЕ ОТКРЫВАЕМ БРАУЗЕР
     if (locationsToProcess.length === 0) {

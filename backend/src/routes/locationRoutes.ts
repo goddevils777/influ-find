@@ -5,6 +5,7 @@ import { log } from '../utils/helpers';
 import { ResumeParser } from '../parsers/resumeParser';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 const router = Router();
 
@@ -494,6 +495,133 @@ router.get('/locations/:cityId', (req: Request, res: Response) => {
       error: 'Failed to get locations'
     });
   }
+});
+
+// Парсинг всех стран (один раз)
+router.post('/parsing/countries', async (req: Request, res: Response) => {
+  let locationParser: any = null;
+  
+  try {
+    log('🌍 Начинаем парсинг всех стран с Instagram...');
+    
+    const { LocationParser } = require('../parsers/locationParser');
+    locationParser = new LocationParser(true); // true = гостевой режим
+    await locationParser.init();
+    
+    // Парсим все страны
+    await locationParser.parseAllCountries();
+    
+    res.json({
+      success: true,
+      message: 'Все страны успешно спарсены и сохранены в базу'
+    });
+    
+  } catch (error) {
+    log(`❌ Ошибка парсинга стран: ${error}`, 'error');
+    res.status(500).json({
+      success: false,
+      error: 'Failed to parse countries'
+    });
+  } finally {
+    if (locationParser) {
+      await locationParser.close();
+    }
+  }
+});
+
+// Парсинг городов выбранной страны
+router.post('/parsing/cities/:countryCode', async (req: Request, res: Response) => {
+  let locationParser: any = null;
+  
+  try {
+    const { countryCode } = req.params;
+    const { countryName } = req.body;
+    
+    if (!countryCode || !countryName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Country code and name are required'
+      });
+    }
+    
+    log(`🏙️ Начинаем парсинг городов для страны: ${countryName} (${countryCode})`);
+    
+    const { LocationParser } = require('../parsers/locationParser');
+    locationParser = new LocationParser(true); // true = анонимный режим
+    await locationParser.init();
+    
+    // Парсим города страны
+    await locationParser.parseAllCitiesInCountry(countryCode, countryName);
+    
+    res.json({
+      success: true,
+      message: `Города страны ${countryName} успешно спарсены`
+    });
+    
+  } catch (error) {
+    log(`❌ Ошибка парсинга городов: ${error}`, 'error');
+    res.status(500).json({
+      success: false,
+      error: 'Failed to parse cities'
+    });
+  } finally {
+    if (locationParser) {
+      await locationParser.close();
+    }
+  }
+});
+
+// Замени существующий прокси код на этот:
+router.get('/proxy/avatar', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+    
+    log(`🖼️ Загружаем аватарку: ${url}`);
+    
+    const axios = require('axios');
+    
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'https://www.instagram.com/',
+        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+      },
+      timeout: 10000
+    });
+    
+    // УЛУЧШЕННЫЕ CORS ЗАГОЛОВКИ
+    res.set({
+      'Content-Type': response.headers['content-type'] || 'image/jpeg',
+      'Cache-Control': 'public, max-age=86400',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none'
+    });
+    
+    log(`✅ Аватарка загружена успешно, размер: ${response.data.length} байт`);
+    res.send(response.data);
+    
+  } catch (error) {
+    log(`❌ Ошибка загрузки аватарки: ${error}`, 'error');
+    res.status(404).send('Image not found');
+  }
+});
+
+// Добавь также OPTIONS handler для CORS
+router.options('/proxy/avatar', (req: Request, res: Response) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+  });
+  res.status(200).end();
 });
 
 export default router;

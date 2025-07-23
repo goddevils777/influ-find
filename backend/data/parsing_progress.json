@@ -28,5 +28,17 @@
     "lastOffset": 10,
     "totalParsed": 4,
     "lastParsedAt": "2025-07-22T19:24:14.773Z"
+  },
+  {
+    "locationId": "371955936655787",
+    "lastOffset": 10,
+    "totalParsed": 2,
+    "lastParsedAt": "2025-07-23T07:53:17.547Z"
+  },
+  {
+    "locationId": "2165591346798626",
+    "lastOffset": 10,
+    "totalParsed": 1,
+    "lastParsedAt": "2025-07-23T08:00:18.665Z"
   }
 ]

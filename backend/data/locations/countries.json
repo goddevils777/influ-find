@@ -1,7 +1,1232 @@
 [
   {
+    "code": "US",
+    "name": "United States",
+    "url": "/explore/locations/US/united-states/"
+  },
+  {
+    "code": "BR",
+    "name": "Brazil",
+    "url": "/explore/locations/BR/brazil/"
+  },
+  {
+    "code": "IN",
+    "name": "India",
+    "url": "/explore/locations/IN/india/"
+  },
+  {
+    "code": "ID",
+    "name": "Indonesia",
+    "url": "/explore/locations/ID/indonesia/"
+  },
+  {
+    "code": "GB",
+    "name": "United Kingdom",
+    "url": "/explore/locations/GB/united-kingdom/"
+  },
+  {
+    "code": "TH",
+    "name": "Thailand",
+    "url": "/explore/locations/TH/thailand/"
+  },
+  {
+    "code": "MX",
+    "name": "Mexico",
+    "url": "/explore/locations/MX/mexico/"
+  },
+  {
+    "code": "DE",
+    "name": "Germany",
+    "url": "/explore/locations/DE/germany/"
+  },
+  {
+    "code": "FR",
+    "name": "France",
+    "url": "/explore/locations/FR/france/"
+  },
+  {
+    "code": "JP",
+    "name": "Japan",
+    "url": "/explore/locations/JP/japan/"
+  },
+  {
+    "code": "VN",
+    "name": "Vietnam",
+    "url": "/explore/locations/VN/vietnam/"
+  },
+  {
+    "code": "IT",
+    "name": "Italy",
+    "url": "/explore/locations/IT/italy/"
+  },
+  {
+    "code": "TR",
+    "name": "Turkey",
+    "url": "/explore/locations/TR/turkey/"
+  },
+  {
+    "code": "CA",
+    "name": "Canada",
+    "url": "/explore/locations/CA/canada/"
+  },
+  {
+    "code": "AU",
+    "name": "Australia",
+    "url": "/explore/locations/AU/australia/"
+  },
+  {
+    "code": "PH",
+    "name": "Philippines",
+    "url": "/explore/locations/PH/philippines/"
+  },
+  {
+    "code": "ES",
+    "name": "Spain",
+    "url": "/explore/locations/ES/spain/"
+  },
+  {
+    "code": "KR",
+    "name": "South Korea",
+    "url": "/explore/locations/KR/south-korea/"
+  },
+  {
+    "code": "TW",
+    "name": "Taiwan",
+    "url": "/explore/locations/TW/taiwan/"
+  },
+  {
+    "code": "MY",
+    "name": "Malaysia",
+    "url": "/explore/locations/MY/malaysia/"
+  },
+  {
+    "code": "ZA",
+    "name": "South Africa",
+    "url": "/explore/locations/ZA/south-africa/"
+  },
+  {
+    "code": "RU",
+    "name": "Russia",
+    "url": "/explore/locations/RU/russia/"
+  },
+  {
+    "code": "AR",
+    "name": "Argentina",
+    "url": "/explore/locations/AR/argentina/"
+  },
+  {
+    "code": "CO",
+    "name": "Colombia",
+    "url": "/explore/locations/CO/colombia/"
+  },
+  {
+    "code": "PE",
+    "name": "Peru",
+    "url": "/explore/locations/PE/peru/"
+  },
+  {
+    "code": "SE",
+    "name": "Sweden",
+    "url": "/explore/locations/SE/sweden/"
+  },
+  {
+    "code": "BD",
+    "name": "Bangladesh",
+    "url": "/explore/locations/BD/bangladesh/"
+  },
+  {
+    "code": "NL",
+    "name": "Netherlands",
+    "url": "/explore/locations/NL/netherlands/"
+  },
+  {
+    "code": "CL",
+    "name": "Chile",
+    "url": "/explore/locations/CL/chile/"
+  },
+  {
+    "code": "PL",
+    "name": "Poland",
+    "url": "/explore/locations/PL/poland/"
+  },
+  {
     "code": "UA",
     "name": "Ukraine",
     "url": "/explore/locations/UA/ukraine/"
+  },
+  {
+    "code": "EG",
+    "name": "Egypt",
+    "url": "/explore/locations/EG/egypt/"
+  },
+  {
+    "code": "PK",
+    "name": "Pakistan",
+    "url": "/explore/locations/PK/pakistan/"
+  },
+  {
+    "code": "IL",
+    "name": "Israel",
+    "url": "/explore/locations/IL/israel/"
+  },
+  {
+    "code": "NG",
+    "name": "Nigeria",
+    "url": "/explore/locations/NG/nigeria/"
+  },
+  {
+    "code": "GR",
+    "name": "Greece",
+    "url": "/explore/locations/GR/greece/"
+  },
+  {
+    "code": "BE",
+    "name": "Belgium",
+    "url": "/explore/locations/BE/belgium/"
+  },
+  {
+    "code": "RO",
+    "name": "Romania",
+    "url": "/explore/locations/RO/romania/"
+  },
+  {
+    "code": "SG",
+    "name": "Singapore",
+    "url": "/explore/locations/SG/singapore/"
+  },
+  {
+    "code": "CH",
+    "name": "Switzerland",
+    "url": "/explore/locations/CH/switzerland/"
+  },
+  {
+    "code": "DK",
+    "name": "Denmark",
+    "url": "/explore/locations/DK/denmark/"
+  },
+  {
+    "code": "NO",
+    "name": "Norway",
+    "url": "/explore/locations/NO/norway/"
+  },
+  {
+    "code": "HK",
+    "name": "Hong Kong",
+    "url": "/explore/locations/HK/hong-kong/"
+  },
+  {
+    "code": "EC",
+    "name": "Ecuador",
+    "url": "/explore/locations/EC/ecuador/"
+  },
+  {
+    "code": "PT",
+    "name": "Portugal",
+    "url": "/explore/locations/PT/portugal/"
+  },
+  {
+    "code": "AT",
+    "name": "Austria",
+    "url": "/explore/locations/AT/austria/"
+  },
+  {
+    "code": "AE",
+    "name": "United Arab Emirates",
+    "url": "/explore/locations/AE/united-arab-emirates/"
+  },
+  {
+    "code": "MA",
+    "name": "Morocco",
+    "url": "/explore/locations/MA/morocco/"
+  },
+  {
+    "code": "SA",
+    "name": "Saudi Arabia",
+    "url": "/explore/locations/SA/saudi-arabia/"
+  },
+  {
+    "code": "CN",
+    "name": "China",
+    "url": "/explore/locations/CN/china/"
+  },
+  {
+    "code": "KH",
+    "name": "Cambodia",
+    "url": "/explore/locations/KH/cambodia/"
+  },
+  {
+    "code": "IE",
+    "name": "Ireland",
+    "url": "/explore/locations/IE/ireland/"
+  },
+  {
+    "code": "CZ",
+    "name": "Czech Republic",
+    "url": "/explore/locations/CZ/czech-republic/"
+  },
+  {
+    "code": "HU",
+    "name": "Hungary",
+    "url": "/explore/locations/HU/hungary/"
+  },
+  {
+    "code": "DZ",
+    "name": "Algeria",
+    "url": "/explore/locations/DZ/algeria/"
+  },
+  {
+    "code": "FI",
+    "name": "Finland",
+    "url": "/explore/locations/FI/finland/"
+  },
+  {
+    "code": "PR",
+    "name": "Puerto Rico",
+    "url": "/explore/locations/PR/puerto-rico/"
+  },
+  {
+    "code": "NZ",
+    "name": "New Zealand",
+    "url": "/explore/locations/NZ/new-zealand/"
+  },
+  {
+    "code": "IQ",
+    "name": "Iraq",
+    "url": "/explore/locations/IQ/iraq/"
+  },
+  {
+    "code": "LK",
+    "name": "Sri Lanka",
+    "url": "/explore/locations/LK/sri-lanka/"
+  },
+  {
+    "code": "KE",
+    "name": "Kenya",
+    "url": "/explore/locations/KE/kenya/"
+  },
+  {
+    "code": "MM",
+    "name": "Myanmar",
+    "url": "/explore/locations/MM/myanmar/"
+  },
+  {
+    "code": "CR",
+    "name": "Costa Rica",
+    "url": "/explore/locations/CR/costa-rica/"
+  },
+  {
+    "code": "GT",
+    "name": "Guatemala",
+    "url": "/explore/locations/GT/guatemala/"
+  },
+  {
+    "code": "BG",
+    "name": "Bulgaria",
+    "url": "/explore/locations/BG/bulgaria/"
+  },
+  {
+    "code": "VE",
+    "name": "Venezuela",
+    "url": "/explore/locations/VE/venezuela/"
+  },
+  {
+    "code": "NP",
+    "name": "Nepal",
+    "url": "/explore/locations/NP/nepal/"
+  },
+  {
+    "code": "BO",
+    "name": "Bolivia",
+    "url": "/explore/locations/BO/bolivia/"
+  },
+  {
+    "code": "HR",
+    "name": "Croatia",
+    "url": "/explore/locations/HR/croatia/"
+  },
+  {
+    "code": "IR",
+    "name": "Iran",
+    "url": "/explore/locations/IR/iran/"
+  },
+  {
+    "code": "KZ",
+    "name": "Kazakhstan",
+    "url": "/explore/locations/KZ/kazakhstan/"
+  },
+  {
+    "code": "PY",
+    "name": "Paraguay",
+    "url": "/explore/locations/PY/paraguay/"
+  },
+  {
+    "code": "DO",
+    "name": "Dominican Republic",
+    "url": "/explore/locations/DO/dominican-republic/"
+  },
+  {
+    "code": "TN",
+    "name": "Tunisia",
+    "url": "/explore/locations/TN/tunisia/"
+  },
+  {
+    "code": "JO",
+    "name": "Jordan",
+    "url": "/explore/locations/JO/jordan/"
+  },
+  {
+    "code": "RS",
+    "name": "Serbia",
+    "url": "/explore/locations/RS/serbia/"
+  },
+  {
+    "code": "AO",
+    "name": "Angola",
+    "url": "/explore/locations/AO/angola/"
+  },
+  {
+    "code": "SK",
+    "name": "Slovakia",
+    "url": "/explore/locations/SK/slovakia/"
+  },
+  {
+    "code": "GH",
+    "name": "Ghana",
+    "url": "/explore/locations/GH/ghana/"
+  },
+  {
+    "code": "LB",
+    "name": "Lebanon",
+    "url": "/explore/locations/LB/lebanon/"
+  },
+  {
+    "code": "CI",
+    "name": "Côte d'Ivoire",
+    "url": "/explore/locations/CI/cote-divoire/"
+  },
+  {
+    "code": "LA",
+    "name": "Laos",
+    "url": "/explore/locations/LA/laos/"
+  },
+  {
+    "code": "SV",
+    "name": "El Salvador",
+    "url": "/explore/locations/SV/el-salvador/"
+  },
+  {
+    "code": "HN",
+    "name": "Honduras",
+    "url": "/explore/locations/HN/honduras/"
+  },
+  {
+    "code": "GE",
+    "name": "Georgia",
+    "url": "/explore/locations/GE/georgia/"
+  },
+  {
+    "code": "CM",
+    "name": "Cameroon",
+    "url": "/explore/locations/CM/cameroon/"
+  },
+  {
+    "code": "CY",
+    "name": "Cyprus",
+    "url": "/explore/locations/CY/cyprus/"
+  },
+  {
+    "code": "UY",
+    "name": "Uruguay",
+    "url": "/explore/locations/UY/uruguay/"
+  },
+  {
+    "code": "ZM",
+    "name": "Zambia",
+    "url": "/explore/locations/ZM/zambia/"
+  },
+  {
+    "code": "LV",
+    "name": "Latvia",
+    "url": "/explore/locations/LV/latvia/"
+  },
+  {
+    "code": "AZ",
+    "name": "Azerbaijan",
+    "url": "/explore/locations/AZ/azerbaijan/"
+  },
+  {
+    "code": "LY",
+    "name": "Libya",
+    "url": "/explore/locations/LY/libya/"
+  },
+  {
+    "code": "BY",
+    "name": "Belarus",
+    "url": "/explore/locations/BY/belarus/"
+  },
+  {
+    "code": "LT",
+    "name": "Lithuania",
+    "url": "/explore/locations/LT/lithuania/"
+  },
+  {
+    "code": "TZ",
+    "name": "Tanzania",
+    "url": "/explore/locations/TZ/tanzania/"
+  },
+  {
+    "code": "MZ",
+    "name": "Mozambique",
+    "url": "/explore/locations/MZ/mozambique/"
+  },
+  {
+    "code": "BA",
+    "name": "Bosnia and Herzegovina",
+    "url": "/explore/locations/BA/bosnia-and-herzegovina/"
+  },
+  {
+    "code": "NI",
+    "name": "Nicaragua",
+    "url": "/explore/locations/NI/nicaragua/"
+  },
+  {
+    "code": "UG",
+    "name": "Uganda",
+    "url": "/explore/locations/UG/uganda/"
+  },
+  {
+    "code": "PA",
+    "name": "Panama",
+    "url": "/explore/locations/PA/panama/"
+  },
+  {
+    "code": "KW",
+    "name": "Kuwait",
+    "url": "/explore/locations/KW/kuwait/"
+  },
+  {
+    "code": "SY",
+    "name": "Syria",
+    "url": "/explore/locations/SY/syria/"
+  },
+  {
+    "code": "MK",
+    "name": "North Macedonia",
+    "url": "/explore/locations/MK/north-macedonia/"
+  },
+  {
+    "code": "EE",
+    "name": "Estonia",
+    "url": "/explore/locations/EE/estonia/"
+  },
+  {
+    "code": "SI",
+    "name": "Slovenia",
+    "url": "/explore/locations/SI/slovenia/"
+  },
+  {
+    "code": "QA",
+    "name": "Qatar",
+    "url": "/explore/locations/QA/qatar/"
+  },
+  {
+    "code": "AF",
+    "name": "Afghanistan",
+    "url": "/explore/locations/AF/afghanistan/"
+  },
+  {
+    "code": "AL",
+    "name": "Albania",
+    "url": "/explore/locations/AL/albania/"
+  },
+  {
+    "code": "CD",
+    "name": "Democratic Republic of the Congo",
+    "url": "/explore/locations/CD/democratic-republic-of-the-congo/"
+  },
+  {
+    "code": "MG",
+    "name": "Madagascar",
+    "url": "/explore/locations/MG/madagascar/"
+  },
+  {
+    "code": "MN",
+    "name": "Mongolia",
+    "url": "/explore/locations/MN/mongolia/"
+  },
+  {
+    "code": "SN",
+    "name": "Senegal",
+    "url": "/explore/locations/SN/senegal/"
+  },
+  {
+    "code": "SD",
+    "name": "Sudan",
+    "url": "/explore/locations/SD/sudan/"
+  },
+  {
+    "code": "CU",
+    "name": "Cuba",
+    "url": "/explore/locations/CU/cuba/"
+  },
+  {
+    "code": "BF",
+    "name": "Burkina Faso",
+    "url": "/explore/locations/BF/burkina-faso/"
+  },
+  {
+    "code": "ZW",
+    "name": "Zimbabwe",
+    "url": "/explore/locations/ZW/zimbabwe/"
+  },
+  {
+    "code": "PS",
+    "name": "Palestine",
+    "url": "/explore/locations/PS/palestine/"
+  },
+  {
+    "code": "BJ",
+    "name": "Benin",
+    "url": "/explore/locations/BJ/benin/"
+  },
+  {
+    "code": "BW",
+    "name": "Botswana",
+    "url": "/explore/locations/BW/botswana/"
+  },
+  {
+    "code": "AM",
+    "name": "Armenia",
+    "url": "/explore/locations/AM/armenia/"
+  },
+  {
+    "code": "XK",
+    "name": "Kosovo",
+    "url": "/explore/locations/XK/kosovo/"
+  },
+  {
+    "code": "TT",
+    "name": "Trinidad and Tobago",
+    "url": "/explore/locations/TT/trinidad-and-tobago/"
+  },
+  {
+    "code": "MD",
+    "name": "Moldova",
+    "url": "/explore/locations/MD/moldova/"
+  },
+  {
+    "code": "UZ",
+    "name": "Uzbekistan",
+    "url": "/explore/locations/UZ/uzbekistan/"
+  },
+  {
+    "code": "OM",
+    "name": "Oman",
+    "url": "/explore/locations/OM/oman/"
+  },
+  {
+    "code": "BH",
+    "name": "Bahrain",
+    "url": "/explore/locations/BH/bahrain/"
+  },
+  {
+    "code": "BN",
+    "name": "Brunei",
+    "url": "/explore/locations/BN/brunei/"
+  },
+  {
+    "code": "JM",
+    "name": "Jamaica",
+    "url": "/explore/locations/JM/jamaica/"
+  },
+  {
+    "code": "ET",
+    "name": "Ethiopia",
+    "url": "/explore/locations/ET/ethiopia/"
+  },
+  {
+    "code": "LU",
+    "name": "Luxembourg",
+    "url": "/explore/locations/LU/luxembourg/"
+  },
+  {
+    "code": "MW",
+    "name": "Malawi",
+    "url": "/explore/locations/MW/malawi/"
+  },
+  {
+    "code": "RE",
+    "name": "Réunion",
+    "url": "/explore/locations/RE/reunion/"
+  },
+  {
+    "code": "HT",
+    "name": "Haiti",
+    "url": "/explore/locations/HT/haiti/"
+  },
+  {
+    "code": "MT",
+    "name": "Malta",
+    "url": "/explore/locations/MT/malta/"
+  },
+  {
+    "code": "MO",
+    "name": "Macau",
+    "url": "/explore/locations/MO/macau/"
+  },
+  {
+    "code": "YE",
+    "name": "Yemen",
+    "url": "/explore/locations/YE/yemen/"
+  },
+  {
+    "code": "SO",
+    "name": "Somalia",
+    "url": "/explore/locations/SO/somalia/"
+  },
+  {
+    "code": "ML",
+    "name": "Mali",
+    "url": "/explore/locations/ML/mali/"
+  },
+  {
+    "code": "ME",
+    "name": "Montenegro",
+    "url": "/explore/locations/ME/montenegro/"
+  },
+  {
+    "code": "GN",
+    "name": "Guinea",
+    "url": "/explore/locations/GN/guinea/"
+  },
+  {
+    "code": "IS",
+    "name": "Iceland",
+    "url": "/explore/locations/IS/iceland/"
+  },
+  {
+    "code": "MV",
+    "name": "Maldives",
+    "url": "/explore/locations/MV/maldives/"
+  },
+  {
+    "code": "NA",
+    "name": "Namibia",
+    "url": "/explore/locations/NA/namibia/"
+  },
+  {
+    "code": "GA",
+    "name": "Gabon",
+    "url": "/explore/locations/GA/gabon/"
+  },
+  {
+    "code": "TG",
+    "name": "Togo",
+    "url": "/explore/locations/TG/togo/"
+  },
+  {
+    "code": "KP",
+    "name": "North Korea",
+    "url": "/explore/locations/KP/north-korea/"
+  },
+  {
+    "code": "CG",
+    "name": "Republic of the Congo",
+    "url": "/explore/locations/CG/republic-of-the-congo/"
+  },
+  {
+    "code": "FJ",
+    "name": "Fiji",
+    "url": "/explore/locations/FJ/fiji/"
+  },
+  {
+    "code": "BS",
+    "name": "The Bahamas",
+    "url": "/explore/locations/BS/the-bahamas/"
+  },
+  {
+    "code": "KG",
+    "name": "Kyrgyzstan",
+    "url": "/explore/locations/KG/kyrgyzstan/"
+  },
+  {
+    "code": "LS",
+    "name": "Lesotho",
+    "url": "/explore/locations/LS/lesotho/"
+  },
+  {
+    "code": "LR",
+    "name": "Liberia",
+    "url": "/explore/locations/LR/liberia/"
+  },
+  {
+    "code": "MU",
+    "name": "Mauritius",
+    "url": "/explore/locations/MU/mauritius/"
+  },
+  {
+    "code": "GP",
+    "name": "Guadeloupe",
+    "url": "/explore/locations/GP/guadeloupe/"
+  },
+  {
+    "code": "PG",
+    "name": "Papua New Guinea",
+    "url": "/explore/locations/PG/papua-new-guinea/"
+  },
+  {
+    "code": "SR",
+    "name": "Suriname",
+    "url": "/explore/locations/SR/suriname/"
+  },
+  {
+    "code": "RW",
+    "name": "Rwanda",
+    "url": "/explore/locations/RW/rwanda/"
+  },
+  {
+    "code": "MP",
+    "name": "Northern Mariana Islands",
+    "url": "/explore/locations/MP/northern-mariana-islands/"
+  },
+  {
+    "code": "SL",
+    "name": "Sierra Leone",
+    "url": "/explore/locations/SL/sierra-leone/"
+  },
+  {
+    "code": "TD",
+    "name": "Chad",
+    "url": "/explore/locations/TD/chad/"
+  },
+  {
+    "code": "GY",
+    "name": "Guyana",
+    "url": "/explore/locations/GY/guyana/"
+  },
+  {
+    "code": "NE",
+    "name": "Niger",
+    "url": "/explore/locations/NE/niger/"
+  },
+  {
+    "code": "MQ",
+    "name": "Martinique",
+    "url": "/explore/locations/MQ/martinique/"
+  },
+  {
+    "code": "VA",
+    "name": "Vatican City",
+    "url": "/explore/locations/VA/vatican-city/"
+  },
+  {
+    "code": "BZ",
+    "name": "Belize",
+    "url": "/explore/locations/BZ/belize/"
+  },
+  {
+    "code": "BB",
+    "name": "Barbados",
+    "url": "/explore/locations/BB/barbados/"
+  },
+  {
+    "code": "MR",
+    "name": "Mauritania",
+    "url": "/explore/locations/MR/mauritania/"
+  },
+  {
+    "code": "BI",
+    "name": "Burundi",
+    "url": "/explore/locations/BI/burundi/"
+  },
+  {
+    "code": "NC",
+    "name": "New Caledonia",
+    "url": "/explore/locations/NC/new-caledonia/"
+  },
+  {
+    "code": "AW",
+    "name": "Aruba",
+    "url": "/explore/locations/AW/aruba/"
+  },
+  {
+    "code": "CF",
+    "name": "Central African Republic",
+    "url": "/explore/locations/CF/central-african-republic/"
+  },
+  {
+    "code": "SZ",
+    "name": "Swaziland",
+    "url": "/explore/locations/SZ/swaziland/"
+  },
+  {
+    "code": "CW",
+    "name": "Curaçao",
+    "url": "/explore/locations/CW/curacao/"
+  },
+  {
+    "code": "SS",
+    "name": "South Sudan",
+    "url": "/explore/locations/SS/south-sudan/"
+  },
+  {
+    "code": "IM",
+    "name": "Isle Of Man",
+    "url": "/explore/locations/IM/isle-of-man/"
+  },
+  {
+    "code": "PF",
+    "name": "French Polynesia",
+    "url": "/explore/locations/PF/french-polynesia/"
+  },
+  {
+    "code": "JE",
+    "name": "Jersey",
+    "url": "/explore/locations/JE/jersey/"
+  },
+  {
+    "code": "BT",
+    "name": "Bhutan",
+    "url": "/explore/locations/BT/bhutan/"
+  },
+  {
+    "code": "CV",
+    "name": "Cape Verde",
+    "url": "/explore/locations/CV/cape-verde/"
+  },
+  {
+    "code": "TJ",
+    "name": "Tajikistan",
+    "url": "/explore/locations/TJ/tajikistan/"
+  },
+  {
+    "code": "KY",
+    "name": "Cayman Islands",
+    "url": "/explore/locations/KY/cayman-islands/"
+  },
+  {
+    "code": "GM",
+    "name": "The Gambia",
+    "url": "/explore/locations/GM/the-gambia/"
+  },
+  {
+    "code": "LC",
+    "name": "St. Lucia",
+    "url": "/explore/locations/LC/st-lucia/"
+  },
+  {
+    "code": "AD",
+    "name": "Andorra",
+    "url": "/explore/locations/AD/andorra/"
+  },
+  {
+    "code": "GF",
+    "name": "French Guiana",
+    "url": "/explore/locations/GF/french-guiana/"
+  },
+  {
+    "code": "GL",
+    "name": "Greenland",
+    "url": "/explore/locations/GL/greenland/"
+  },
+  {
+    "code": "FO",
+    "name": "Faroe Islands",
+    "url": "/explore/locations/FO/faroe-islands/"
+  },
+  {
+    "code": "MC",
+    "name": "Monaco",
+    "url": "/explore/locations/MC/monaco/"
+  },
+  {
+    "code": "AG",
+    "name": "Antigua",
+    "url": "/explore/locations/AG/antigua/"
+  },
+  {
+    "code": "BM",
+    "name": "Bermuda",
+    "url": "/explore/locations/BM/bermuda/"
+  },
+  {
+    "code": "GW",
+    "name": "Guinea-Bissau",
+    "url": "/explore/locations/GW/guinea-bissau/"
+  },
+  {
+    "code": "AQ",
+    "name": "Antarctica",
+    "url": "/explore/locations/AQ/antarctica/"
+  },
+  {
+    "code": "GU",
+    "name": "Guam",
+    "url": "/explore/locations/GU/guam/"
+  },
+  {
+    "code": "DJ",
+    "name": "Djibouti",
+    "url": "/explore/locations/DJ/djibouti/"
+  },
+  {
+    "code": "VI",
+    "name": "US Virgin Islands",
+    "url": "/explore/locations/VI/us-virgin-islands/"
+  },
+  {
+    "code": "KN",
+    "name": "Saint Kitts and Nevis",
+    "url": "/explore/locations/KN/saint-kitts-and-nevis/"
+  },
+  {
+    "code": "GD",
+    "name": "Grenada",
+    "url": "/explore/locations/GD/grenada/"
+  },
+  {
+    "code": "SB",
+    "name": "Solomon Islands",
+    "url": "/explore/locations/SB/solomon-islands/"
+  },
+  {
+    "code": "SC",
+    "name": "Seychelles",
+    "url": "/explore/locations/SC/seychelles/"
+  },
+  {
+    "code": "GQ",
+    "name": "Equatorial Guinea",
+    "url": "/explore/locations/GQ/equatorial-guinea/"
+  },
+  {
+    "code": "TM",
+    "name": "Turkmenistan",
+    "url": "/explore/locations/TM/turkmenistan/"
+  },
+  {
+    "code": "VU",
+    "name": "Vanuatu",
+    "url": "/explore/locations/VU/vanuatu/"
+  },
+  {
+    "code": "GI",
+    "name": "Gibraltar",
+    "url": "/explore/locations/GI/gibraltar/"
+  },
+  {
+    "code": "VC",
+    "name": "Saint Vincent and the Grenadines",
+    "url": "/explore/locations/VC/saint-vincent-and-the-grenadines/"
+  },
+  {
+    "code": "YT",
+    "name": "Mayotte",
+    "url": "/explore/locations/YT/mayotte/"
+  },
+  {
+    "code": "TC",
+    "name": "Turks and Caicos Islands",
+    "url": "/explore/locations/TC/turks-and-caicos-islands/"
+  },
+  {
+    "code": "SX",
+    "name": "Sint Maarten",
+    "url": "/explore/locations/SX/sint-maarten/"
+  },
+  {
+    "code": "LI",
+    "name": "Liechtenstein",
+    "url": "/explore/locations/LI/liechtenstein/"
+  },
+  {
+    "code": "WS",
+    "name": "Samoa",
+    "url": "/explore/locations/WS/samoa/"
+  },
+  {
+    "code": "SM",
+    "name": "San Marino",
+    "url": "/explore/locations/SM/san-marino/"
+  },
+  {
+    "code": "KM",
+    "name": "Comoros",
+    "url": "/explore/locations/KM/comoros/"
+  },
+  {
+    "code": "DM",
+    "name": "Dominica",
+    "url": "/explore/locations/DM/dominica/"
+  },
+  {
+    "code": "GG",
+    "name": "Guernsey",
+    "url": "/explore/locations/GG/guernsey/"
+  },
+  {
+    "code": "ER",
+    "name": "Eritrea",
+    "url": "/explore/locations/ER/eritrea/"
+  },
+  {
+    "code": "BQ",
+    "name": "Bonaire, Sint Eustatius and Saba",
+    "url": "/explore/locations/BQ/bonaire-sint-eustatius-and-saba/"
+  },
+  {
+    "code": "EH",
+    "name": "Western Sahara",
+    "url": "/explore/locations/EH/western-sahara/"
+  },
+  {
+    "code": "TO",
+    "name": "Tonga",
+    "url": "/explore/locations/TO/tonga/"
+  },
+  {
+    "code": "TL",
+    "name": "Timor-Leste",
+    "url": "/explore/locations/TL/timor-leste/"
+  },
+  {
+    "code": "AS",
+    "name": "American Samoa",
+    "url": "/explore/locations/AS/american-samoa/"
+  },
+  {
+    "code": "ST",
+    "name": "Sao Tome and Principe",
+    "url": "/explore/locations/ST/sao-tome-and-principe/"
+  },
+  {
+    "code": "VG",
+    "name": "British Virgin Islands",
+    "url": "/explore/locations/VG/british-virgin-islands/"
+  },
+  {
+    "code": "MF",
+    "name": "Saint Martin",
+    "url": "/explore/locations/MF/saint-martin/"
+  },
+  {
+    "code": "CK",
+    "name": "Cook Islands",
+    "url": "/explore/locations/CK/cook-islands/"
+  },
+  {
+    "code": "AI",
+    "name": "Anguilla",
+    "url": "/explore/locations/AI/anguilla/"
+  },
+  {
+    "code": "PW",
+    "name": "Palau",
+    "url": "/explore/locations/PW/palau/"
+  },
+  {
+    "code": "FK",
+    "name": "Falkland Islands",
+    "url": "/explore/locations/FK/falkland-islands/"
+  },
+  {
+    "code": "SJ",
+    "name": "Svalbard and Jan Mayen",
+    "url": "/explore/locations/SJ/svalbard-and-jan-mayen/"
+  },
+  {
+    "code": "KI",
+    "name": "Kiribati",
+    "url": "/explore/locations/KI/kiribati/"
+  },
+  {
+    "code": "FM",
+    "name": "Federated States of Micronesia",
+    "url": "/explore/locations/FM/federated-states-of-micronesia/"
+  },
+  {
+    "code": "AN",
+    "name": "Netherlands Antilles",
+    "url": "/explore/locations/AN/netherlands-antilles/"
+  },
+  {
+    "code": "MH",
+    "name": "Marshall Islands",
+    "url": "/explore/locations/MH/marshall-islands/"
+  },
+  {
+    "code": "SH",
+    "name": "Saint Helena",
+    "url": "/explore/locations/SH/saint-helena/"
+  },
+  {
+    "code": "NR",
+    "name": "Nauru",
+    "url": "/explore/locations/NR/nauru/"
+  },
+  {
+    "code": "GS",
+    "name": "South Georgia and the South Sandwich Islands",
+    "url": "/explore/locations/GS/south-georgia-and-the-south-sandwich-islands/"
+  },
+  {
+    "code": "BL",
+    "name": "Saint Barthélemy",
+    "url": "/explore/locations/BL/saint-barthelemy/"
+  },
+  {
+    "code": "MS",
+    "name": "Montserrat",
+    "url": "/explore/locations/MS/montserrat/"
+  },
+  {
+    "code": "PM",
+    "name": "Saint Pierre and Miquelon",
+    "url": "/explore/locations/PM/saint-pierre-and-miquelon/"
+  },
+  {
+    "code": "WF",
+    "name": "Wallis and Futuna",
+    "url": "/explore/locations/WF/wallis-and-futuna/"
+  },
+  {
+    "code": "TV",
+    "name": "Tuvalu",
+    "url": "/explore/locations/TV/tuvalu/"
+  },
+  {
+    "code": "NU",
+    "name": "Niue",
+    "url": "/explore/locations/NU/niue/"
+  },
+  {
+    "code": "CX",
+    "name": "Christmas Island",
+    "url": "/explore/locations/CX/christmas-island/"
+  },
+  {
+    "code": "NF",
+    "name": "Norfolk Island",
+    "url": "/explore/locations/NF/norfolk-island/"
+  },
+  {
+    "code": "PN",
+    "name": "Pitcairn",
+    "url": "/explore/locations/PN/pitcairn/"
+  },
+  {
+    "code": "TF",
+    "name": "French Southern Territories",
+    "url": "/explore/locations/TF/french-southern-territories/"
+  },
+  {
+    "code": "CC",
+    "name": "Cocos (Keeling) Islands",
+    "url": "/explore/locations/CC/cocos-keeling-islands/"
+  },
+  {
+    "code": "TK",
+    "name": "Tokelau",
+    "url": "/explore/locations/TK/tokelau/"
   }
 ]
