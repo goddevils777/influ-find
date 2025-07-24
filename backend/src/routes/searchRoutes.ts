@@ -15,7 +15,7 @@ router.post('/locations', async (req: Request, res: Response) => {
   let locationParser: any = null;
   
   try {
-    const { cityName, cityId, locations, guestMode, forceRefresh } = req.body;
+    const { cityName, cityId, locations, guestMode, forceRefresh, continueParsing, maxPosts = 10 } = req.body;
     
     if (!locations || locations.length === 0) {
       return res.status(400).json({ error: 'Locations are required' });
@@ -45,7 +45,7 @@ router.post('/locations', async (req: Request, res: Response) => {
         log(`   Инфлюенсеров в кэше: ${cachedInfluencers.length}`);
     }
     
-    if (!forceRefresh && cacheExists) {
+    if (!forceRefresh && !continueParsing && cacheExists) {
         const cachedInfluencers = cache.getCache(locationId);
         if (cachedInfluencers.length > 0) {
         log(`📋 Используем кэш для локации ${location.name}: ${cachedInfluencers.length} инфлюенсеров`);
@@ -53,20 +53,36 @@ router.post('/locations', async (req: Request, res: Response) => {
         continue;
         }
     }
-    
-    // Если кэша нет или принудительное обновление - добавляем в список для парсинга
+
+    // Если continueParsing = true, всегда добавляем в список для парсинга
+    if (continueParsing && cacheExists) {
+        const cachedInfluencers = cache.getCache(locationId);
+        log(`🔄 Продолжение парсинга: загружаем ${cachedInfluencers.length} из кэша + парсим дальше`);
+        allInfluencers.push(...cachedInfluencers);
+    }
+
+    // Если кэша нет или принудительное обновление или продолжение - добавляем в список для парсинга
     locationsToProcess.push(location);
     }
     
     // ДОБАВЬ ПОСЛЕ СТРОКИ: log(`📊 Статистика: ${allInfluencers.length} из кэша, ${locationsToProcess.length} требуют парсинга`);
 
     // НОВАЯ ЛОГИКА: Если НЕ принудительное обновление - возвращаем только то что есть в кэше
-    if (!forceRefresh) {
+    if (!forceRefresh && !continueParsing) {
     log(`📋 Обычный поиск - показываем только из кэша`);
     
+
+    
+    log(`📊 Всего инфлюенсеров загружено из кэша: ${allInfluencers.length}`);
+    allInfluencers.forEach((inf, index) => {
+    log(`   ${index + 1}. @${inf.username} (${inf.followersCount} подписчиков)`);
+    });
+
     const uniqueInfluencers = allInfluencers.filter((inf, index, self) => 
         index === self.findIndex(i => i.username === inf.username)
     );
+
+    log(`📊 Уникальных после фильтрации: ${uniqueInfluencers.length}`);
     
     return res.json({
         success: true,
@@ -90,7 +106,7 @@ router.post('/locations', async (req: Request, res: Response) => {
     }
 
 // Если дошли сюда - значит forceRefresh=true, продолжаем парсинг
-log(`🔄 Принудительное обновление - запускаем парсинг ${locationsToProcess.length} локаций`);
+log(`🔄 ${forceRefresh ? 'Принудительное обновление' : 'Продолжение парсинга'} - запускаем парсинг ${locationsToProcess.length} локаций`);
     
     // ЕСЛИ ВСЕ ЛОКАЦИИ В КЭШЕ - НЕ ОТКРЫВАЕМ БРАУЗЕР
     if (locationsToProcess.length === 0) {
@@ -152,7 +168,7 @@ log(`🔄 Принудительное обновление - запускаем
         }
         
         const postParser = new PostParser(locationParser.page);
-        const locationInfluencers = await postParser.parseLocationPosts(locationUrl, 10, forceRefresh);
+        const locationInfluencers = await postParser.parseLocationPosts(locationUrl, maxPosts, forceRefresh);
         
         // ИСПРАВЛЕННАЯ ЛОГИКА - ВСЕГДА ДОБАВЛЯЕМ К ОБЩЕМУ МАССИВУ
         allInfluencers.push(...locationInfluencers);
@@ -253,6 +269,86 @@ router.post('/profile', async (req: Request, res: Response) => {
     }
     
     log(`✅ Профиль @${username} успешно обновлен`);
+
+    // СОХРАНЯЕМ ОБНОВЛЕННЫЕ ДАННЫЕ В КЭШ
+    const { LocationCache } = require('../parsers/locationCache');
+    const cache = new LocationCache();
+
+    // Обновляем профиль во всех локациях где он есть
+    const fs = require('fs');
+    const path = require('path');
+    const dataPath = path.join(__dirname, '../../data/locations');
+
+    if (fs.existsSync(dataPath)) {
+    const files = fs.readdirSync(dataPath);
+    
+    log(`🔍 Ищем профиль @${username} в кэшах локаций...`);
+    log(`📊 Всего файлов кэша: ${files.length}`);
+
+    files.forEach((file: string) => {
+      if (file.startsWith('locations_') && file.endsWith('.json')) {
+        const locationId = file.match(/locations_(.+)\.json/)?.[1];
+        log(`📁 Проверяем файл: ${file} (locationId: ${locationId})`);
+        
+        if (locationId) {
+          const cachedInfluencers = cache.getCache(locationId) || [];
+          const hasUser = cachedInfluencers.some((inf: any) => inf.username === username);
+          log(`   Инфлюенсеров: ${cachedInfluencers.length}, есть @${username}: ${hasUser ? 'ДА' : 'НЕТ'}`);
+            
+            // Находим и обновляем профиль
+            // Находим и обновляем профиль
+            let profileFound = false;
+            const updatedInfluencers = cachedInfluencers.map((inf: any) => {
+            if (inf.username === username) {
+                profileFound = true;
+                log(`🔍 Найден профиль @${username} в локации ${locationId}, обновляем данные...`);
+                log(`   Старая аватарка: ${inf.avatarUrl || 'НЕТ'}`);
+                log(`   Новая аватарка: ${profileData.avatarUrl || 'НЕТ'}`);
+                
+                const updated = {
+                ...inf,
+                followersCount: profileData.followersCount || inf.followersCount,
+                fullName: profileData.fullName || inf.fullName,
+                bio: profileData.bio || inf.bio,
+                avatarUrl: profileData.avatarUrl || inf.avatarUrl,
+                lastUpdated: profileData.lastUpdated
+                };
+                
+                log(`   Результат: аватарка ${updated.avatarUrl || 'НЕТ'}`);
+                return updated;
+            }
+            return inf;
+            });
+
+            if (profileFound) {
+            log(`✅ Профиль @${username} найден и обновлен в локации ${locationId}`);
+            } else {
+            log(`❌ Профиль @${username} НЕ найден в локации ${locationId}`);
+            }
+            
+            // Сохраняем если были изменения
+            // Сохраняем если были изменения
+            if (updatedInfluencers.some((inf: any) => inf.username === username)) {
+              log(`💾 СОХРАНЯЕМ ОБНОВЛЕННЫЙ КЭШ для локации ${locationId}`);
+              log(`   Количество инфлюенсеров: ${updatedInfluencers.length}`);
+              
+              // Проверим что аватарка действительно есть в обновленных данных
+              const updatedUser = updatedInfluencers.find((inf: any) => inf.username === username);
+              if (updatedUser) {
+                log(`   Аватарка у @${username} в обновленном массиве: ${updatedUser.avatarUrl ? 'ЕСТЬ' : 'НЕТ'}`);
+              }
+              
+              cache.saveCache(locationId, updatedInfluencers);
+              log(`💾 Обновлен кэш для локации ${locationId} с новыми данными @${username}`);
+            } else {
+              log(`❌ НЕ СОХРАНЯЕМ - профиль @${username} не найден в массиве для сохранения`);
+            }
+        }
+        }
+    });
+    }
+
+    log(`✅ Данные @${username} обновлены во всех кэшах локаций`);
     
     res.json({
       success: true,
@@ -278,7 +374,6 @@ router.post('/profile', async (req: Request, res: Response) => {
   }
 });
 
-// Функция парсинга профиля
 async function parseUserProfile(page: any, username: string) {
   try {
     const profileUrl = `https://www.instagram.com/${username}/`;
@@ -289,82 +384,48 @@ async function parseUserProfile(page: any, username: string) {
       timeout: 15000 
     });
     
-    // Проверяем что профиль существует и мы авторизованы
+    // Проверяем что профиль существует
     const pageTitle = await page.title();
     if (pageTitle.includes('Page Not Found') || pageTitle.includes('Sorry')) {
       log(`❌ Профиль @${username} не найден`);
       return null;
     }
     
-    // ПРОВЕРЯЕМ НА ФОРМУ ЛОГИНА
-    const hasLoginForm = await page.evaluate(() => {
-      return !!document.querySelector('input[name="username"]');
-    });
-    
-    if (hasLoginForm) {
-      log(`❌ Требуется авторизация для профиля @${username} - форма логина обнаружена`);
-      return null;
-    }
-    
-    // Ждем загрузки контента - используем правильный метод
     await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Извлекаем данные профиля
     const profileData = await page.evaluate(() => {
-      // Подписчики - улучшенный поиск
+      // Подписчики - ищем правильный элемент
       let followersCount = 0;
-      let followersText = '';
       
-      // Ищем текст с подписчиками
-      const allElements = Array.from(document.querySelectorAll('*'));
-      for (const el of allElements) {
-        const text = el.textContent || '';
-        if (text.match(/\d+[KMB]?\s*(followers|подписчик)/i) && text.length < 100) {
-          followersText = text;
+      const headerLinks = document.querySelectorAll('header a');
+      for (const link of headerLinks) {
+        const text = link.textContent || '';
+        if (text.includes('followers')) {
+          const numberText = text.match(/([\d,\.]+[KMBkmb]?)/);
+          if (numberText) {
+            let num = numberText[1].replace(/,/g, '').toLowerCase();
+            if (num.includes('k')) {
+              followersCount = Math.round(parseFloat(num) * 1000);
+            } else if (num.includes('m')) {
+              followersCount = Math.round(parseFloat(num) * 1000000);
+            } else {
+              followersCount = parseInt(num.replace(/[^\d]/g, ''));
+            }
+          }
           break;
         }
       }
       
-      if (followersText) {
-        const match = followersText.match(/([\d,\.]+[KMBkmb]?)/);
-        if (match) {
-          let num = match[1].replace(/,/g, '').toLowerCase();
-          if (num.includes('k')) {
-            followersCount = parseFloat(num) * 1000;
-          } else if (num.includes('m')) {
-            followersCount = parseFloat(num) * 1000000;
-          } else if (num.includes('b')) {
-            followersCount = parseFloat(num) * 1000000000;
-          } else {
-            followersCount = parseInt(num);
-          }
-        }
-      }
-      
-      // Полное имя - улучшенный поиск
+      // Полное имя
       let fullName = '';
-      const nameSelectors = [
-        'h1',
-        'h2',
-        '[data-testid="user-name"]',
-        'header h1',
-        'header h2',
-        'span[dir="auto"]'
-      ];
-      
-      for (const selector of nameSelectors) {
-        const nameEl = document.querySelector(selector);
-        if (nameEl && nameEl.textContent && nameEl.textContent.trim().length > 0) {
-          const text = nameEl.textContent.trim();
-          // Проверяем что это не username
-          if (!text.startsWith('@') && text.length < 50) {
-            fullName = text;
-            break;
-          }
-        }
+      const headerH2 = document.querySelector('header h2');
+      if (headerH2?.textContent) {
+        fullName = headerH2.textContent.trim();
       }
       
-      // Био - расширенный поиск
+      // Био - ищем в правильном контейнере
+// Био - точно как в основном парсере
       let bio = '';
       const bioSelectors = [
         'div[class*="_a6hd"] span',
@@ -373,36 +434,32 @@ async function parseUserProfile(page: any, username: string) {
         'span[class*="_ap3a"]',
         'span[class*="_aaco"]',
         'article header div div span',
-        'header div span',
-        'div[dir="auto"] span'
+        'header div span'
       ];
-      
+
       for (const selector of bioSelectors) {
-        const bioElements = document.querySelectorAll(selector);
-        for (const bioEl of bioElements) {
-          if (bioEl && bioEl.textContent) {
-            const text = bioEl.textContent.trim();
-            // Проверяем что это био (не слишком короткое и не содержит служебную информацию)
-            if (text.length > 5 && text.length < 500 && 
-                !text.includes('followers') && !text.includes('following') && 
-                !text.includes('posts') && !text.match(/^\d+$/)) {
-              bio = text;
-              break;
-            }
+        const element = document.querySelector(selector);
+        if (element) {
+          const text = element.textContent?.trim() || '';
+          if (text.length > bio.length && 
+              text.length > 10 && 
+              text.length < 1000 && 
+              !text.includes('подписчик') && 
+              !text.includes('публикац') &&
+              !text.match(/^\d+$/) &&
+              !text.match(/^@\w+$/)) {
+            bio = text;
           }
         }
-        if (bio) break;
       }
       
-      // Аватарка - улучшенный поиск
+      // Аватарка
       let avatarUrl = '';
       const avatarSelectors = [
         'img[alt*="profile picture"]',
         'img[data-testid="user-avatar"]', 
         'header img',
-        'img[alt*="\'s profile picture"]',
-        'canvas + img',
-        'img[src*="profile"]'
+        'img[alt*="\'s profile picture"]'
       ];
       
       for (const selector of avatarSelectors) {
@@ -416,35 +473,21 @@ async function parseUserProfile(page: any, username: string) {
         }
       }
       
-      // Количество постов
-      let postsCount = 0;
-      const allText = document.body.textContent || '';
-      const postsMatch = allText.match(/(\d+[,\d]*)\s*posts/i);
-      if (postsMatch) {
-        postsCount = parseInt(postsMatch[1].replace(/,/g, ''));
-      }
-      
       return {
         followersCount,
-        fullName,
-        bio,
+        fullName: fullName || username,
+        bio: bio || 'Описание не указано',
         avatarUrl,
-        postsCount,
         lastUpdated: new Date().toISOString()
       };
     });
     
-    log(`📊 Данные профиля @${username}:`);
-    log(`   Подписчики: ${profileData.followersCount}`);
-    log(`   Имя: ${profileData.fullName}`);
-    log(`   Посты: ${profileData.postsCount}`);
-    log(`   Аватарка: ${profileData.avatarUrl ? 'Есть' : 'Нет'}`);
-    log(`   Био: ${profileData.bio ? profileData.bio.substring(0, 50) + '...' : 'Нет'}`);
+    log(`📊 Обновлены данные @${username}: ${profileData.followersCount} подписчиков`);
     
     return profileData;
     
   } catch (error) {
-    log(`❌ Ошибка парсинга профиля @${username}: ${error}`, 'error');
+    log(`❌ Ошибка парсинга @${username}: ${error}`, 'error');
     return null;
   }
 }

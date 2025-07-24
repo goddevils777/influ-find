@@ -62,7 +62,10 @@ export class PostParser {
     }
 
     // ПОЛУЧАЕМ ТЕКУЩИЙ OFFSET
-    const currentOffset = resumeFromCheckpoint ? startPostIndex : (forceRefresh ? 0 : this.offset.getOffset(locationId));
+    const savedOffset = this.offset.getOffset(locationId);
+    log(`🔍 Получен сохраненный offset для локации ${locationId}: ${savedOffset}`);
+    const currentOffset = resumeFromCheckpoint ? startPostIndex : (forceRefresh ? 0 : savedOffset);
+    log(`📊 Используем offset: ${currentOffset} (resumeFromCheckpoint: ${resumeFromCheckpoint}, forceRefresh: ${forceRefresh})`);
     const stats = this.offset.getStats(locationId);
     
     log(`📊 Локация ${locationId}: начинаем с поста ${currentOffset + 1}`);
@@ -110,8 +113,10 @@ export class PostParser {
       await HumanBehavior.humanMouseMove(this.page);
 
       // ЕДИНЫЙ БЛОК ПОИСКА ПОСТОВ С OFFSET
-      const posts = await this.page.evaluate((maxPosts: number, offset: number) => {
-        console.log(`🔍 Ищем посты начиная с позиции ${offset + 1}`);
+log(`🔧 Параметры поиска постов: maxPosts=${maxPosts}, currentOffset=${currentOffset}`);
+
+const posts = await this.page.evaluate((maxPosts: number, offset: number) => {
+  console.log(`🔍 JS: Ищем посты - maxPosts=${maxPosts}, offset=${offset}`);
         
         return new Promise((resolve) => {
           setTimeout(() => {
@@ -409,12 +414,35 @@ export class PostParser {
                 
                 return { views };
               });
+
               
-              return {
-                followersText,
-                fullName,
-                reelsStats
-              };
+              
+              // Аватарка - добавляем парсинг
+            let avatarUrl = '';
+            const avatarSelectors = [
+            'img[alt*="profile picture"]',
+            'img[data-testid="user-avatar"]', 
+            'header img',
+            'img[alt*="\'s profile picture"]'
+            ];
+
+            for (const selector of avatarSelectors) {
+            const avatarEl = document.querySelector(selector);
+            if (avatarEl) {
+                const src = avatarEl.getAttribute('src');
+                if (src && src.includes('http')) {
+                avatarUrl = src;
+                break;
+                }
+            }
+            }
+
+            return {
+            followersText,
+            fullName,
+            reelsStats,
+            avatarUrl
+            };
             });
 
             const finalBio = mainPageBio || 'Описание не указано';
@@ -432,6 +460,7 @@ export class PostParser {
               fullName: profileData.fullName || username,
               followersCount: finalFollowersCount,
               bio: finalBio,
+              avatarUrl: profileData.avatarUrl || '',
               cityId: locationId,
               id: this.generateUserId(),
               categories: ['Local'],
@@ -444,13 +473,19 @@ export class PostParser {
                 url: locationUrl
               }
             };
+
+            // ДОБАВЛЯЕМ ЛОГИРОВАНИЕ АВАТАРКИ
+log(`📷 Аватарка для @${username}: ${profileData.avatarUrl ? 'НАЙДЕНА' : 'НЕ НАЙДЕНА'}`);
+if (profileData.avatarUrl) {
+  log(`   URL: ${profileData.avatarUrl.substring(0, 80)}...`);
+}
             
             newInfluencers.push(influencer);
             allInfluencers.push(influencer);
             newUsersFound++;
             
             const viewsList = profileData.reelsStats.map((reel: any) => reel.views).join(', ');
-            log(`✅ Добавлен новый инфлюенсер: @${username} (${finalFollowersCount.toLocaleString()} подписчиков, просмотры: ${viewsList})`);
+            log(`✅ Добавлен новый инфлюенсер: @${username} (${finalFollowersCount.toLocaleString()} подписчиков, аватарка: ${influencer.avatarUrl ? 'ЕСТЬ' : 'НЕТ'}, просмотры: ${viewsList})`);
           }
           
         } catch (error) {
@@ -473,19 +508,28 @@ export class PostParser {
       }
       
       // СОХРАНЯЕМ НОВЫЙ OFFSET И СТАТИСТИКУ
-      const newOffset = currentOffset + posts.length;
-      this.offset.saveOffset(locationId, newOffset, stats.totalParsed + newUsersFound);
+    // СОХРАНЯЕМ НОВЫЙ OFFSET И СТАТИСТИКУ
+    const newOffset = currentOffset + posts.length;
+    log(`💾 Сохраняем offset для локации ${locationId}: старый=${currentOffset}, новый=${newOffset}`);
+    this.offset.saveOffset(locationId, newOffset, stats.totalParsed + newUsersFound);
+    log(`✅ Offset сохранен успешно`);
       
       // ОБНОВЛЯЕМ КЭШ - ИСПРАВЛЕННАЯ ЛОГИКА
-      if (allInfluencers.length > 0) {
+        // ОБНОВЛЯЕМ КЭШ - ПРАВИЛЬНАЯ ЛОГИКА
+        if (newInfluencers.length > 0) {
         // Получаем существующие данные из кэша
         const existingInfluencers = this.cache.getCache(locationId) || [];
         
+        log(`📊 Текущее состояние кэша: ${existingInfluencers.length} инфлюенсеров`);
+        log(`📊 Найдено новых: ${newInfluencers.length} инфлюенсеров`);
+        
         // Объединяем старые и новые, убирая дубликаты по username
-        const allInfluencersForLocation = [...existingInfluencers, ...allInfluencers];
+        const allInfluencersForLocation = [...existingInfluencers, ...newInfluencers];
         const uniqueInfluencersForLocation = allInfluencersForLocation.filter((inf, index, self) => 
-          index === self.findIndex(i => i.username === inf.username)
+            index === self.findIndex(i => i.username === inf.username)
         );
+        
+        log(`📊 Итого уникальных после объединения: ${uniqueInfluencersForLocation.length}`);
         
         // Сохраняем объединенный список
         this.cache.saveCache(locationId, uniqueInfluencersForLocation);

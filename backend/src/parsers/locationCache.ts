@@ -3,7 +3,7 @@ import path from 'path';
 import { log } from '../utils/helpers';
 
 export class LocationCache {
-  private cachePath = path.join(__dirname, '../../data/influencers');
+  private cachePath = path.join(__dirname, '../data/locations');
 
   constructor() {
     if (!fs.existsSync(this.cachePath)) {
@@ -20,7 +20,7 @@ export class LocationCache {
   // Получить кэш для локации
   getCache(locationId: string): any[] {
     try {
-      const cacheFile = path.join(this.cachePath, `location_${locationId}.json`);
+      const cacheFile = path.join(this.cachePath, `locations_${locationId}.json`);
       if (fs.existsSync(cacheFile)) {
         const data = fs.readFileSync(cacheFile, 'utf8');
         const cache = JSON.parse(data);
@@ -45,22 +45,39 @@ export class LocationCache {
   }
 
   // Сохранить кэш для локации
-  saveCache(locationId: string, influencers: any[]): void {
-    try {
-      const cacheFile = path.join(this.cachePath, `location_${locationId}.json`);
-      const cacheData = {
-        locationId,
-        influencers,
-        cachedAt: new Date().toISOString(),
-        count: influencers.length
-      };
-      
-      fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
-      log(`💾 Сохранен кэш для локации ${locationId}: ${influencers.length} инфлюенсеров`);
-    } catch (error) {
-      log(`Ошибка сохранения кэша для локации ${locationId}: ${error}`, 'error');
-    }
+
+saveCache(locationId: string, influencers: any[]): void {
+  try {
+    log(`💾 СОХРАНЕНИЕ КЭША для локации ${locationId}:`);
+    log(`   Получено для сохранения: ${influencers.length} инфлюенсеров`);
+    
+    const cacheFile = path.join(this.cachePath, `locations_${locationId}.json`);
+    
+    // Получаем существующие данные
+    const existingInfluencers = this.getCache(locationId) || [];
+    log(`   Уже было в кэше: ${existingInfluencers.length} инфлюенсеров`);
+    
+    // Объединяем старые и новые, убирая дубликаты по username
+    const allInfluencers = [...existingInfluencers, ...influencers];
+    const uniqueInfluencers = allInfluencers.filter((inf, index, self) => 
+      index === self.findIndex(i => i.username === inf.username)
+    );
+    
+    log(`   Итого уникальных: ${uniqueInfluencers.length} инфлюенсеров`);
+    
+    const cacheData = {
+      locationId,
+      influencers: uniqueInfluencers,
+      cachedAt: new Date().toISOString(),
+      count: uniqueInfluencers.length
+    };
+    
+    fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
+    log(`💾 Сохранен кэш для локации ${locationId}: ${uniqueInfluencers.length} инфлюенсеров`);
+  } catch (error) {
+    log(`Ошибка сохранения кэша для локации ${locationId}: ${error}`, 'error');
   }
+}
 
   // Получить статистику кэша
   getCacheStats(): any {

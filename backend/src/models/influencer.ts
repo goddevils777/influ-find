@@ -12,6 +12,7 @@ export interface Influencer {
   categories: string[];
   lastPostDate: Date;
   createdAt: Date;
+  lastUpdated?: string;
 }
 
 export interface City {

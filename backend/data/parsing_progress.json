@@ -31,14 +31,38 @@
   },
   {
     "locationId": "371955936655787",
-    "lastOffset": 10,
-    "totalParsed": 2,
-    "lastParsedAt": "2025-07-23T07:53:17.547Z"
+    "lastOffset": 30,
+    "totalParsed": 4,
+    "lastParsedAt": "2025-07-24T15:38:27.844Z"
   },
   {
     "locationId": "2165591346798626",
     "lastOffset": 10,
     "totalParsed": 1,
     "lastParsedAt": "2025-07-23T08:00:18.665Z"
+  },
+  {
+    "locationId": "1276469555816796",
+    "lastOffset": 10,
+    "totalParsed": 4,
+    "lastParsedAt": "2025-07-23T13:09:10.094Z"
+  },
+  {
+    "locationId": "585924578504721",
+    "lastOffset": 10,
+    "totalParsed": 1,
+    "lastParsedAt": "2025-07-23T13:48:15.934Z"
+  },
+  {
+    "locationId": "270090477",
+    "lastOffset": 34,
+    "totalParsed": 24,
+    "lastParsedAt": "2025-07-23T17:54:09.273Z"
+  },
+  {
+    "locationId": "1820653188246895",
+    "lastOffset": 20,
+    "totalParsed": 11,
+    "lastParsedAt": "2025-07-23T18:17:01.171Z"
   }
 ]
