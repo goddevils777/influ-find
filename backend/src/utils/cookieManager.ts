@@ -5,16 +5,25 @@ import { Page } from 'puppeteer';
 import { log } from './helpers';
 
 export class CookieManager {
-  private cookiePath = path.join(__dirname, '../../data/instagram_cookies.json');
+  private cookiePath: string;
 
-  constructor() {
-    // Создаем папку data если её нет
+  constructor(userId?: string) {
+    if (userId) {
+      // Путь к cookies пользователя
+      this.cookiePath = path.join(__dirname, `../../data/users/${userId}/instagram_cookies.json`);
+      log(`👤 CookieManager для пользователя ${userId}: ${this.cookiePath}`);
+    } else {
+      // Общий путь (для совместимости)
+      this.cookiePath = path.join(__dirname, '../../data/instagram_cookies.json');
+      log(`🌐 CookieManager общий: ${this.cookiePath}`);
+    }
+    
+    // Создаем папку если её нет
     const dataDir = path.dirname(this.cookiePath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
-      log(`Created data directory: ${dataDir}`);
+      log(`📁 Создана папка: ${dataDir}`);
     }
-    log(`Cookie path: ${this.cookiePath}`);
   }
 
   async saveCookies(page: Page): Promise<void> {

@@ -13,11 +13,19 @@ export class LocationParser {
   private cookieManager: CookieManager;
   private hierarchy: LocationHierarchy;
   private guestMode: boolean;
+  private userId?: string;
+  private proxyConfig?: any;
 
-  constructor(guestMode: boolean = false) {
-    this.cookieManager = new CookieManager();
-    this.hierarchy = new LocationHierarchy();
+  constructor(guestMode: boolean = false, options?: { userId?: string; proxyConfig?: any }) {
     this.guestMode = guestMode;
+    this.userId = options?.userId;
+    this.proxyConfig = options?.proxyConfig;
+    
+    // Передаем userId в CookieManager если есть
+    this.cookieManager = new CookieManager(this.userId);
+    this.hierarchy = new LocationHierarchy();
+    
+    log(`🔧 LocationParser создан: guestMode=${guestMode}, userId=${this.userId || 'none'}`);
   }
 
   async init(): Promise<void> {

@@ -14,6 +14,23 @@
     "password": "$2b$10$1jJ45cVzM2hskreT8MEELuPVibZlmEKMyH4/vhRM8qHydsjXVZ/rG",
     "name": "God",
     "createdAt": "2025-07-24T19:20:14.677Z",
+    "instagramConnected": true,
+    "proxyConnected": true,
+    "proxyConfig": {
+      "host": "154.222.250.252",
+      "port": 63140,
+      "username": "XBq2FBiv",
+      "password": "Fiu5p7rk",
+      "type": "http"
+    },
+    "instagramUsername": "connected_user"
+  },
+  {
+    "id": "user_1753440035707_vhm31i9p4",
+    "email": "beginerdnikolays@gmail.com",
+    "password": "$2b$10$tIrcTaGnOp0Txbt/DeISNeDrMQTfg36KeqCKy0QOCKenp.xsIu9T.",
+    "name": "God",
+    "createdAt": "2025-07-25T10:40:35.707Z",
     "instagramConnected": false,
     "proxyConnected": false
   }

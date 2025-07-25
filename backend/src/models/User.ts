@@ -12,6 +12,7 @@ export interface User {
     port: number;
     username?: string;
     password?: string;
+    type: 'http' | 'https' | 'socks5';
   };
 }
 

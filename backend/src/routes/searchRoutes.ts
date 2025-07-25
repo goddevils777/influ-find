@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { searchByCity, getParserStatus, forceParseCity } from '../controllers/searchController';
 import { log } from '../utils/helpers';
+import { authenticateToken } from './authRoutes';
+import { requireProxyAndInstagram } from '../middleware/checkConnections';
 
 const router = Router();
 
@@ -11,7 +13,7 @@ router.get('/status', getParserStatus);
 router.post('/parse', forceParseCity);
 
 // Поиск инфлюенсеров по выбранным локациям
-router.post('/locations', async (req: Request, res: Response) => {
+router.post('/locations', authenticateToken, requireProxyAndInstagram, async (req: any, res: Response) => {
   let locationParser: any = null;
   
   try {
@@ -134,12 +136,28 @@ log(`🔄 ${forceRefresh ? 'Принудительное обновление' :
       });
     }
     
-    // СОЗДАЕМ ПАРСЕР ТОЛЬКО ДЛЯ ЛОКАЦИЙ БЕЗ КЭША
+    // И замени на:
     const { PostParser } = require('../parsers/postParser');
     const { LocationParser } = require('../parsers/locationParser');
-    
+
     log(`🔐 Создаем авторизованный парсер для ${locationsToProcess.length} локаций`);
-    locationParser = new LocationParser(false);
+
+    // Получаем настройки пользователя (добавь middleware requireProxyAndInstagram)
+    const userId = (req as any).user?.userId;
+    const userConfig = (req as any).userConfig;
+
+    if (!userId || !userConfig) {
+      throw new Error('Настройки пользователя не найдены. Убедитесь что авторизованы и подключены прокси+Instagram.');
+    }
+
+    log(`👤 Используем настройки пользователя ${userId}`);
+    log(`🔗 Прокси: ${userConfig.proxyConfig.host}:${userConfig.proxyConfig.port}`);
+
+    // Создаем парсер с настройками пользователя
+    locationParser = new LocationParser(false, {
+      userId: userId,
+      proxyConfig: userConfig.proxyConfig
+    });
     await locationParser.init();
     log(`✅ Парсер инициализирован успешно`);
     
