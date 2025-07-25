@@ -1,0 +1,20 @@
+[
+  {
+    "id": "user_1753384069279_c2986hmwu",
+    "email": "god.devils.666.777@gmail.com",
+    "password": "$2b$10$a4DlZiEvRzAdCCxeB66HH.le9L9ZO9Rz2DqxpMFfuk9kjcq1PVtOS",
+    "name": "xxxx",
+    "createdAt": "2025-07-24T19:07:49.279Z",
+    "instagramConnected": false,
+    "proxyConnected": false
+  },
+  {
+    "id": "user_1753384814677_uak770cf4",
+    "email": "supreme.red777@gmail.com",
+    "password": "$2b$10$1jJ45cVzM2hskreT8MEELuPVibZlmEKMyH4/vhRM8qHydsjXVZ/rG",
+    "name": "God",
+    "createdAt": "2025-07-24T19:20:14.677Z",
+    "instagramConnected": false,
+    "proxyConnected": false
+  }
+]

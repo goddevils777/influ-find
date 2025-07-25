@@ -460,39 +460,60 @@ router.get('/cities/:countryCode', (req: Request, res: Response) => {
 });
 
 // Получить локации города
+// Получить локации города
 router.get('/locations/:cityId', (req: Request, res: Response) => {
   try {
     const { cityId } = req.params;
+    log(`🔍 Получение локаций для города ID: ${cityId}`);
+    
     const dataPath = path.join(__dirname, '../../data/locations');
     
-    if (fs.existsSync(dataPath)) {
-      const files = fs.readdirSync(dataPath);
-      const locationFile = files.find(file => 
-        file.startsWith(`locations_${cityId}_`)
-      );
-      
-      if (locationFile) {
-        const locations = JSON.parse(fs.readFileSync(path.join(dataPath, locationFile), 'utf8'));
-        res.json({
-          success: true,
-          locations: locations
-        });
-      } else {
-        res.json({
-          success: true,
-          locations: []
-        });
-      }
-    } else {
-      res.json({
-        success: true,
-        locations: []
+    if (!fs.existsSync(dataPath)) {
+      log(`❌ Папка локаций не найдена: ${dataPath}`);
+      return res.json({ 
+        success: true, 
+        locations: [],
+        message: 'Папка локаций не найдена'
       });
     }
+    
+    // Ищем файл локаций для этого города
+    const files = fs.readdirSync(dataPath);
+    log(`📁 Файлы в папке: ${files.join(', ')}`);
+    
+    const locationFile = files.find((file: string) => 
+      file.startsWith(`locations_${cityId}_`) && file.endsWith('.json')
+    );
+    
+    if (!locationFile) {
+      log(`❌ Файл локаций для города ${cityId} не найден`);
+      log(`🔍 Искали файлы с префиксом: locations_${cityId}_`);
+      return res.json({ 
+        success: true, 
+        locations: [],
+        message: `Локации для города ${cityId} не найдены. Используйте кнопку "Спарсить локации".`
+      });
+    }
+    
+    log(`✅ Найден файл локаций: ${locationFile}`);
+    
+    const filePath = path.join(dataPath, locationFile);
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    
+    log(`📊 Загружено ${data.length} локаций для города ${cityId}`);
+    
+    res.json({
+      success: true,
+      locations: data,
+      message: `Загружено ${data.length} локаций`
+    });
+    
   } catch (error) {
+    log(`❌ Ошибка получения локаций: ${error}`, 'error');
     res.status(500).json({
       success: false,
-      error: 'Failed to get locations'
+      error: 'Failed to get locations',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -622,6 +643,72 @@ router.options('/proxy/avatar', (req: Request, res: Response) => {
     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
   });
   res.status(200).end();
+});
+
+// Сброс сессии Instagram - УМНАЯ ВЕРСИЯ
+router.post('/reset-session', async (req: Request, res: Response) => {
+  try {
+    log('🔄 ПОЛНЫЙ сброс сессии Instagram для смены аккаунта...');
+    
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Удаляем файлы сессии (как раньше)
+    const cookiesFile = path.join(__dirname, '../../data/instagram_cookies.json');
+    if (fs.existsSync(cookiesFile)) {
+      fs.unlinkSync(cookiesFile);
+      log('🗑️ Файл cookies удален');
+    }
+    
+    const progressFile = path.join(__dirname, '../../data/parsing_progress.json');
+    if (fs.existsSync(progressFile)) {
+      fs.unlinkSync(progressFile);
+      log('🗑️ Файл прогресса парсинга удален');
+    }
+    
+    // Удаляем checkpoint'ы
+    const checkpointsDir = path.join(__dirname, '../../data/checkpoints');
+    if (fs.existsSync(checkpointsDir)) {
+      const files = fs.readdirSync(checkpointsDir);
+      files.forEach((file: string) => {
+        fs.unlinkSync(path.join(checkpointsDir, file));
+      });
+      log('🗑️ Checkpoint файлы удалены');
+    }
+    
+    // 🔥 СОЗДАЕМ ФЛАГ ДЛЯ ГЛУБОКОЙ ОЧИСТКИ
+    const resetFlagFile = path.join(__dirname, '../../data/browser_reset_needed.flag');
+    fs.writeFileSync(resetFlagFile, JSON.stringify({
+      resetRequested: true,
+      timestamp: new Date().toISOString(),
+      reason: 'User requested session reset for new account'
+    }));
+    log('🚩 Создан флаг для глубокой очистки браузера');
+    
+    // Закрываем активные браузеры
+    const { execSync } = require('child_process');
+    try {
+      execSync('pkill -f chrome', { stdio: 'ignore' });
+      execSync('pkill -f chromium', { stdio: 'ignore' });
+      log('🗑️ Активные браузерные процессы закрыты');
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+    
+    log('✅ СЕССИЯ СБРОШЕНА - при следующем запуске будет глубокая очистка');
+    
+    res.json({
+      success: true,
+      message: 'Сессия сброшена. При следующем запуске браузер будет полностью очищен для нового аккаунта.'
+    });
+    
+  } catch (error) {
+    log(`❌ Ошибка сброса сессии: ${error}`, 'error');
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reset session'
+    });
+  }
 });
 
 export default router;

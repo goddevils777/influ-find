@@ -3,7 +3,7 @@ import path from 'path';
 import { log } from '../utils/helpers';
 
 export class LocationCache {
-  private cachePath = path.join(__dirname, '../data/locations');
+    private cachePath = path.join(__dirname, '../../data/influencers');
 
   constructor() {
     if (!fs.existsSync(this.cachePath)) {
@@ -12,15 +12,17 @@ export class LocationCache {
   }
 
   // Проверить есть ли кэш для локации
-  hasCache(locationId: string): boolean {
-    const cacheFile = path.join(this.cachePath, `location_${locationId}.json`);
-    return fs.existsSync(cacheFile);
-  }
+    hasCache(locationId: string): boolean {
+      // ИСПРАВЛЯЕМ: используем одинаковое имя файла
+    // СТАЛО:
+      const cacheFile = path.join(this.cachePath, `location_${locationId}.json`);
+      return fs.existsSync(cacheFile);
+    }
 
   // Получить кэш для локации
   getCache(locationId: string): any[] {
     try {
-      const cacheFile = path.join(this.cachePath, `locations_${locationId}.json`);
+      const cacheFile = path.join(this.cachePath, `location_${locationId}.json`);
       if (fs.existsSync(cacheFile)) {
         const data = fs.readFileSync(cacheFile, 'utf8');
         const cache = JSON.parse(data);

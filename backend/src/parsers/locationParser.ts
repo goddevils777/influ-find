@@ -71,38 +71,100 @@ export class LocationParser {
 
       this.browser = await puppeteer.launch(launchOptions);
 
-      // СОЗДАЕМ НОВЫЙ КОНТЕКСТ С ОЧИСТКОЙ ДАННЫХ
-      const context = await this.browser.createBrowserContext();
-      this.page = await context.newPage();
+    const context = await this.browser.createBrowserContext();
+    this.page = await context.newPage();
 
-      // ОЧИСТКА ДАННЫХ БРАУЗЕРА
-      await this.page.evaluateOnNewDocument(() => {
-        // Очищаем хранилища
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Удаляем WebDriver следы
-        Object.defineProperty(navigator, 'webdriver', {
-          get: () => undefined,
-        });
-        
-        // Маскируем автоматизацию
-        Object.defineProperty(navigator, 'plugins', {
-          get: () => [1, 2, 3, 4, 5],
-        });
-        
-        Object.defineProperty(navigator, 'languages', {
-          get: () => ['en-US', 'en'],
-        });
-        
-        // Удаляем chrome объект
-        if ('chrome' in window) {
-          delete (window as any).chrome;
-        }
-      });
+    // ДОБАВЬ ЭТУ СТРОКУ:
+    log('🔍 ОТЛАДКА: Страница создана, начинаем умную очистку...');
 
-      // Очищаем старые cookies
-      await this.page.deleteCookie(...(await this.page.cookies()));
+    // УМНАЯ ОЧИСТКА ДАННЫХ БРАУЗЕРА - только при сбросе сессии
+    const fs = require('fs');
+    const path = require('path');
+    const resetFlagFile = path.join(__dirname, '../../data/browser_reset_needed.flag');
+    const needsDeepReset = fs.existsSync(resetFlagFile);
+
+    // ДОБАВЬ ЭТИ СТРОКИ ДЛЯ ОТЛАДКИ:
+    log(`🔍 ОТЛАДКА: Путь к флагу: ${resetFlagFile}`);
+    log(`🔍 ОТЛАДКА: Флаг существует: ${needsDeepReset}`);
+    log(`🔍 ОТЛАДКА: Режим гостя: ${this.guestMode}`);
+
+    if (needsDeepReset) {
+        log('🔥 ОБНАРУЖЕН ФЛАГ СБРОСА - выполняем глубокую очистку для нового аккаунта');
+        
+        await this.page.evaluateOnNewDocument(() => {
+          // ГЛУБОКАЯ ОЧИСТКА для смены аккаунта
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Очищаем IndexedDB
+          if (window.indexedDB) {
+            window.indexedDB.databases().then(databases => {
+              databases.forEach(db => {
+                if (db.name) window.indexedDB.deleteDatabase(db.name);
+              });
+            });
+          }
+          
+          // Переопределяем WebGL fingerprint
+          const getParameter = WebGLRenderingContext.prototype.getParameter;
+          WebGLRenderingContext.prototype.getParameter = function(parameter) {
+            if (parameter === 37445) return 'Intel Inc.';
+            if (parameter === 37446) return 'Intel(R) HD Graphics 630';
+            return getParameter.call(this, parameter);
+          };
+          
+          // Маскируем canvas fingerprint
+          const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+          HTMLCanvasElement.prototype.toDataURL = function(...args) {
+            const context = this.getContext('2d');
+            if (context) {
+              context.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.1)`;
+              context.fillRect(0, 0, 1, 1);
+            }
+            return originalToDataURL.apply(this, args);
+          };
+          
+          // Случайное разрешение экрана
+          Object.defineProperty(screen, 'width', { get: () => 1366 + Math.floor(Math.random() * 200) });
+          Object.defineProperty(screen, 'height', { get: () => 768 + Math.floor(Math.random() * 200) });
+          
+          // Удаляем WebDriver следы
+          Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+          
+          // Случайные плагины
+          Object.defineProperty(navigator, 'plugins', {
+            get: () => new Array(Math.floor(Math.random() * 5) + 1).fill({})
+          });
+          
+          // Случайный язык
+          const languages = [['en-US', 'en'], ['en-GB', 'en'], ['en-CA', 'en']];
+          const randomLang = languages[Math.floor(Math.random() * languages.length)];
+          Object.defineProperty(navigator, 'languages', { get: () => randomLang });
+          
+          // Удаляем chrome объект
+          if ('chrome' in window) delete (window as any).chrome;
+        });
+        
+        // Удаляем флаг после использования
+        fs.unlinkSync(resetFlagFile);
+        log('🗑️ Флаг сброса удален - глубокая очистка выполнена');
+        
+      } else {
+         log('✅ Используем существующую сессию - минимальная очистка');
+        
+        await this.page.evaluateOnNewDocument(() => {
+          // МИНИМАЛЬНАЯ ОЧИСТКА для существующей сессии
+          // Только убираем следы автоматизации
+          Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+          if ('chrome' in window) delete (window as any).chrome;
+        });
+      }
+
+      // Очищаем старые cookies только при глубоком сбросе
+      if (needsDeepReset) {
+        await this.page.deleteCookie(...(await this.page.cookies()));
+        log('🗑️ Старые cookies очищены для нового аккаунта');
+      }
       
       // УСТАНАВЛИВАЕМ РЕАЛИСТИЧНЫЙ USER-AGENT
       const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';

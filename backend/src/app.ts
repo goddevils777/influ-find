@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { requestLogger, errorLogger } from './middleware/logger';
 import locationRoutes from './routes/locationRoutes';
+import authRoutes from './routes/authRoutes';
+import instagramRoutes from './routes/instagramRoutes';
+import proxyRoutes from './routes/proxyRoutes';
 
 dotenv.config();
 
@@ -24,6 +27,9 @@ import adminRoutes from './routes/adminRoutes';
 app.use('/api/admin', adminRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/instagram', instagramRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

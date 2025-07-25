@@ -304,6 +304,10 @@ router.post('/profile', async (req: Request, res: Response) => {
                 log(`🔍 Найден профиль @${username} в локации ${locationId}, обновляем данные...`);
                 log(`   Старая аватарка: ${inf.avatarUrl || 'НЕТ'}`);
                 log(`   Новая аватарка: ${profileData.avatarUrl || 'НЕТ'}`);
+
+                log(`🔍 ОТЛАДКА ОБНОВЛЕНИЯ:`);
+                log(`   profileData содержит: ${Object.keys(profileData).join(', ')}`);
+                log(`   Аватарка передается: ${profileData.avatarUrl ? 'ДА' : 'НЕТ'}`);
                 
                 const updated = {
                 ...inf,
@@ -453,36 +457,50 @@ async function parseUserProfile(page: any, username: string) {
         }
       }
       
-      // Аватарка
-      let avatarUrl = '';
-      const avatarSelectors = [
-        'img[alt*="profile picture"]',
-        'img[data-testid="user-avatar"]', 
-        'header img',
-        'img[alt*="\'s profile picture"]'
-      ];
-      
-      for (const selector of avatarSelectors) {
-        const avatarEl = document.querySelector(selector);
-        if (avatarEl) {
-          const src = avatarEl.getAttribute('src');
-          if (src && src.includes('http')) {
-            avatarUrl = src;
-            break;
-          }
+    // Аватарка - улучшенная логика с логированием
+    let avatarUrl = '';
+    const avatarSelectors = [
+      'img[alt*="profile picture"]',
+      'img[data-testid="user-avatar"]', 
+      'header section img[src*="https"]',
+      'img[alt*="\'s profile picture"]',
+      'article img[src*="scontent"]',
+      'div[role="img"] img'
+    ];
+
+    console.log('🔍 Ищем аватарку...');
+    for (const selector of avatarSelectors) {
+      const avatarEl = document.querySelector(selector);
+      if (avatarEl) {
+        const src = avatarEl.getAttribute('src');
+        console.log(`Найден элемент: ${selector}, src: ${src?.substring(0, 80)}...`);
+        if (src && (src.includes('scontent') || src.includes('cdninstagram') || src.includes('instagram'))) {
+          avatarUrl = src;
+          console.log('✅ Аватарка найдена: ' + src.substring(0, 100));
+          break;
         }
       }
-      
-      return {
-        followersCount,
-        fullName: fullName || username,
-        bio: bio || 'Описание не указано',
-        avatarUrl,
-        lastUpdated: new Date().toISOString()
-      };
+    }
+    console.log('📷 Финальный URL аватарки: ' + (avatarUrl || 'НЕТ'));
+          
+   return {
+  followersCount,
+  fullName: fullName || 'Unknown User',
+  bio: bio || 'Описание не указано',
+  avatarUrl,
+  lastUpdated: new Date().toISOString()
+};
     });
     
     log(`📊 Обновлены данные @${username}: ${profileData.followersCount} подписчиков`);
+
+    // Добавь после неё:
+    log(`🔍 ОТЛАДКА АВАТАРКИ @${username}:`);
+    log(`   Найдена аватарка: ${profileData.avatarUrl ? 'ДА' : 'НЕТ'}`);
+    if (profileData.avatarUrl) {
+      log(`   URL: ${profileData.avatarUrl.substring(0, 100)}...`);
+    }
+    log(`   Размер данных профиля: ${JSON.stringify(profileData).length} символов`);
     
     return profileData;
     
