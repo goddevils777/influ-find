@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { SearchResponse, ProfileResponse, Country, City, Location } from '../types/api';
+import { Influencer } from '../types/influencer';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useSearchForm = () => {
   // States
@@ -24,6 +26,17 @@ export const useSearchForm = () => {
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [locationSearchText, setLocationSearchText] = useState('');
+  const [maxPosts, setMaxPosts] = useState<number | string>(10);
+  const handleContinueParsing = () => handleSearch(false, true);
+
+  // Состояния для фильтров
+  const [minFollowers, setMinFollowers] = useState<number | string>('');
+  const [maxFollowers, setMaxFollowers] = useState<number | string>('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [minReelsViews, setMinReelsViews] = useState<number | string>('');
+
+  const { user } = useAuth();
+
 
   // API функции
   const fetchCountries = async () => {
@@ -39,7 +52,6 @@ export const useSearchForm = () => {
     try {
       const response = await axios.get<{cities: City[]}>(`http://localhost:3001/api/locations/cities/${countryCode}`);
       setCities(response.data.cities || []);
-      // НЕ сбрасываем selectedCity и locations здесь - они сбросятся в handleCityChange
     } catch (error) {
       console.error('Error fetching cities:', error);
       setCities([]);
@@ -79,31 +91,8 @@ export const useSearchForm = () => {
     }
   };
 
-  // Парсинг городов страны
-  const parseCitiesInCountry = async (countryCode: string, countryName: string) => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const response = await axios.post<{success: boolean, message: string}>(`http://localhost:3001/api/locations/parsing/cities/${countryCode}`, {
-        countryName: countryName
-      });
-      
-      if (response.data.success) {
-        // После парсинга обновляем список городов
-        await fetchCities(countryCode);
-        setError(`✅ Города страны ${countryName} успешно спарсены`);
-      }
-    } catch (error) {
-      console.error('Error parsing cities:', error);
-      setError('Ошибка парсинга городов');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Поиск инфлюенсеров
-  const handleSearch = async (forceRefresh: boolean = false) => {
+  const handleSearch = async (forceRefresh: boolean = false, continueParsing: boolean = false) => {
     if (selectedLocations.length === 0) return;
     
     setLoading(true);
@@ -114,13 +103,15 @@ export const useSearchForm = () => {
       const selectedCityData = cities.find(city => city.id === selectedCity);
       const selectedLocationData = locations.filter(loc => selectedLocations.includes(loc.id));
       
-      const response = await axios.post<SearchResponse>('http://localhost:3001/api/search/locations', {
-        cityName: selectedCityData?.name,
-        cityId: selectedCity,
-        locations: selectedLocationData,
-        guestMode: true,
-        forceRefresh: forceRefresh
-      });
+    const response = await axios.post<SearchResponse>('http://localhost:3001/api/search/locations', {
+    cityName: selectedCityData?.name,
+    cityId: selectedCity,
+    locations: selectedLocationData,
+    guestMode: true,
+    forceRefresh: forceRefresh,
+    continueParsing: continueParsing,
+    maxPosts: typeof maxPosts === 'number' ? maxPosts : 10
+    });
       
       setResults(response.data);
       sessionStorage.setItem('searchResults', JSON.stringify(response.data));
@@ -142,23 +133,22 @@ export const useSearchForm = () => {
       
       const response = await axios.post<ProfileResponse>('http://localhost:3001/api/search/profile', {
         username: username
-        // Убираем guestMode - используем авторизованный режим
       });
       
       if (response.data.success && results) {
-        console.log(`✅ Получены новые данные профиля:`, response.data.data);
+        console.log('📊 Получены обновленные данные:', response.data.data);
         
         // Обновляем данные инфлюенсера в результатах
         const updatedInfluencers = results.data.influencers.map((inf) => 
-          inf.username === username ? { 
-            ...inf, 
-            ...response.data.data,
-            // Убеждаемся что аватарка обновляется
-            avatarUrl: response.data.data.avatarUrl || inf.avatarUrl
+          inf.username === username ? {
+            ...inf,
+            followersCount: response.data.data.followersCount || inf.followersCount,
+            fullName: response.data.data.fullName || inf.fullName,
+            bio: response.data.data.bio || inf.bio,
+            avatarUrl: response.data.data.avatarUrl || inf.avatarUrl,
+            lastUpdated: response.data.data.lastUpdated
           } : inf
         );
-        
-        console.log(`📊 Обновлено инфлюенсеров в результатах: ${updatedInfluencers.length}`);
         
         const updatedResults = {
           ...results,
@@ -169,21 +159,43 @@ export const useSearchForm = () => {
         };
         
         setResults(updatedResults);
-        
-        // Также обновляем в sessionStorage
-        sessionStorage.setItem('searchResults', JSON.stringify(updatedResults));
-        
         console.log(`✅ Профиль @${username} обновлен в интерфейсе`);
+        console.log(`   Аватарка: ${response.data.data.avatarUrl || 'НЕТ'}`);
         
-        return response.data.data;
       } else {
-        console.error(`❌ Не удалось получить данные профиля @${username}`);
+        setError('Не удалось обновить профиль');
       }
+      
     } catch (error) {
-      setError(`Ошибка парсинга профиля @${username}`);
-      console.error('Profile parse error:', error);
+      console.error('Parse profile error:', error);
+      setError('Ошибка при обновлении профиля');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Обработчики изменений
+  const handleCountryChange = (countryCode: string) => {
+    setSelectedCountry(countryCode);
+    setSelectedCity('');
+    setCitySearchText('');
+    setLocations([]);
+    setSelectedLocations([]);
+    sessionStorage.setItem('selectedCountry', countryCode);
+    sessionStorage.removeItem('selectedCity');
+    sessionStorage.removeItem('selectedLocations');
+    if (countryCode) {
+      fetchCities(countryCode);
+    }
+  };
+  
+  const handleCityChange = (cityId: string) => {
+    setSelectedCity(cityId);
+    setSelectedLocations([]);
+    sessionStorage.setItem('selectedCity', cityId);
+    sessionStorage.removeItem('selectedLocations');
+    if (cityId) {
+      fetchLocations(cityId);
     }
   };
 
@@ -210,14 +222,12 @@ export const useSearchForm = () => {
     if (cities.length > 0 && selectedCountry) {
       const savedCity = sessionStorage.getItem('selectedCity');
       if (savedCity) {
-        // Проверяем что сохраненный город принадлежит выбранной стране
         const cityData = cities.find(city => city.id === savedCity);
         if (cityData) {
           setSelectedCity(savedCity);
           setCitySearchText(cityData.name);
           fetchLocations(savedCity);
         } else {
-          // Если город не найден в текущей стране - сбрасываем
           sessionStorage.removeItem('selectedCity');
           setSelectedCity('');
           setCitySearchText('');
@@ -267,27 +277,34 @@ export const useSearchForm = () => {
     showCityDropdown,
     locationSearchText,
     isRestoringFromStorage,
+    maxPosts,
     
     // Сеттеры
-    setSelectedCountry,
-    setSelectedCity,
     setSelectedLocations,
     setCountrySearchText,
     setCitySearchText,
     setShowCountryDropdown,
     setShowCityDropdown,
     setLocationSearchText,
+    setMaxPosts,
     
-    // Основные функции
-    handleSearch,
+    // Обработчики
+    handleCountryChange,
+    handleCityChange,
+    handleSearchInfluencers: () => handleSearch(false),
+    handleForceRefresh: () => handleSearch(true),
+    handleContinueParsing,
+    handleParseCity,
     handleParseProfile,
-    
-    // API функции
-    fetchCountries,
-    fetchCities,
-    fetchLocations,
-    
-    // Новые функции парсинга
-    parseCitiesInCountry
+
+    // Фильтры
+    minFollowers,
+    maxFollowers,
+    locationFilter,
+    minReelsViews,
+    setMinFollowers,
+    setMaxFollowers,
+    setLocationFilter,
+    setMinReelsViews
   };
 };

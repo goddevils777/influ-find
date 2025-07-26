@@ -63,6 +63,9 @@ export class CookieManager {
   }
 
   async loadCookies(page: Page): Promise<boolean> {
+
+  log(`🔍 DEBUG: Загружаем cookies`);
+  log(`🔍 DEBUG: Путь к cookies: ${this.cookiePath}`);
     try {
       if (!fs.existsSync(this.cookiePath)) {
         log('📝 No saved cookies found');
@@ -124,8 +127,12 @@ export class CookieManager {
       if (sessionCookie && userIdCookie) {
         log(`🔑 Session cookies present: sessionid + ds_user_id (${userIdCookie.value})`);
         return true;
+        
       } else {
+        log(`🔍 DEBUG: Найденные cookies: ${cookies.map((c: any) => c.name).join(', ')}`);
+log(`🔍 DEBUG: Ищем критичные cookies: sessionid, csrftoken`);
         log('⚠️ Missing critical session cookies', 'warn');
+        
         return false;
       }
       

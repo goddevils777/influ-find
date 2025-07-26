@@ -1,9 +1,11 @@
 // frontend/src/components/SearchForm.tsx
-import React from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import { useSearchForm } from '../hooks/useSearchForm';
 import { copyToClipboard, copyAllUsernames, showCopyNotification } from '../utils/copyUtils';
 import styles from './SearchForm.module.css';
+
+
+import axios from 'axios';
 
 const SearchForm: React.FC = () => {
   const {
@@ -22,92 +24,33 @@ const SearchForm: React.FC = () => {
     showCityDropdown,
     locationSearchText,
     isRestoringFromStorage,
-    setSelectedCountry,
-    setSelectedCity,
+    maxPosts,
     setSelectedLocations,
     setCountrySearchText,
     setCitySearchText,
     setShowCountryDropdown,
     setShowCityDropdown,
     setLocationSearchText,
-    handleSearch,
+    setMaxPosts,
+    handleCountryChange,
+    handleCityChange,
+    handleSearchInfluencers,
+    handleForceRefresh,
+    handleContinueParsing,
+    handleParseCity,
     handleParseProfile,
-    parseCitiesInCountry,
-    fetchCities,
-    fetchLocations
+    minFollowers,
+    maxFollowers,
+    locationFilter,
+    minReelsViews,
+    setMinFollowers,
+    setMaxFollowers,
+    setLocationFilter,
+    setMinReelsViews
   } = useSearchForm();
 
-  // Обработчик выбора страны
-  const handleCountryChange = (countryCode: string) => {
-    setSelectedCountry(countryCode);
-    setSelectedLocations([]);
-    
-    if (countryCode) {
-      sessionStorage.setItem('selectedCountry', countryCode);
-    } else {
-      sessionStorage.removeItem('selectedCountry');
-    }
-    
-    sessionStorage.removeItem('selectedLocations');
-    
-    if (countryCode) {
-      fetchCities(countryCode);
-    }
-  };
+  const [activeFollowersField, setActiveFollowersField] = useState<'min' | 'max'>('min');
 
-  // Обработчик выбора города
-  const handleCityChange = (cityId: string) => {
-    setSelectedCity(cityId);
-    setSelectedLocations([]);
-    
-    if (cityId) {
-      sessionStorage.setItem('selectedCity', cityId);
-    } else {
-      sessionStorage.removeItem('selectedCity');
-    }
-    
-    sessionStorage.removeItem('selectedLocations');
-    
-    if (cityId) {
-      fetchLocations(cityId);
-    }
-  };
-
-  // Парсинг локаций города
-  const handleParseCity = async () => {
-    if (!selectedCity) return;
-    
-    const selectedCityData = cities.find(city => city.id === selectedCity);
-    
-    if (!selectedCityData) {
-      console.error('Город не найден');
-      return;
-    }
-    
-    console.log(`🏙️ Парсим локации для города: ${selectedCityData.name}`);
-    
-    try {
-      await axios.post<{success: boolean}>('http://localhost:3001/api/search/city', {
-        cityName: selectedCityData.name,
-        guestMode: true
-      });
-      
-      await fetchLocations(selectedCity);
-      
-    } catch (error) {
-      console.error('Parse city locations error:', error);
-    }
-  };
-
-  // Поиск инфлюенсеров - ТОЛЬКО из базы/кэша
-  const handleSearchInfluencers = () => {
-    handleSearch(false);
-  };
-
-  // Принудительное обновление - с парсингом
-  const handleForceRefresh = () => {
-    handleSearch(true);
-  };
 
   // Функция копирования ника
   const handleCopyUsername = async (username: string) => {
@@ -135,11 +78,105 @@ const SearchForm: React.FC = () => {
     loc.name.toLowerCase().includes(locationSearchText.toLowerCase())
   );
 
+  // Функция для парсинга чисел с К, М, и т.д.
+  const parseNumber = (value: string | number): number | null => {
+    if (typeof value === 'number') return value;
+    if (!value || value === '') return null;
+    
+    const str = value.toString().toLowerCase().trim();
+    
+    // Убираем пробелы и запятые
+    const cleanStr = str.replace(/[\s,]/g, '');
+    
+    // Проверяем на К (тысячи)
+    if (cleanStr.includes('k')) {
+      const num = parseFloat(cleanStr.replace('k', ''));
+      return num * 1000;
+    }
+    
+    // Проверяем на М (миллионы)
+    if (cleanStr.includes('m')) {
+      const num = parseFloat(cleanStr.replace('m', ''));
+      return num * 1000000;
+    }
+    
+    // Обычное число
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? null : num;
+  };
+
+  // Функция фильтрации результатов
+  const getFilteredInfluencers = () => {
+    if (!results?.data?.influencers) return [];
+    
+    return results.data.influencers.filter((influencer: any) => {
+
+      // Фильтр по минимальному количеству подписчиков
+      const minFollowersNum = parseNumber(minFollowers);
+      if (minFollowersNum && influencer.followersCount < minFollowersNum) return false;
+
+      // Фильтр по максимальному количеству подписчиков  
+      const maxFollowersNum = parseNumber(maxFollowers);
+      if (maxFollowersNum && influencer.followersCount > maxFollowersNum) return false;
+      
+      // Фильтр по локации
+      if (locationFilter) {
+        const locationName = influencer.foundInLocation?.name || '';
+        if (!locationName.toLowerCase().includes(locationFilter.toLowerCase())) {
+          return false;
+        }
+      }
+      
+      // Фильтр по минимальным просмотрам Reels
+      const minReelsViewsNum = parseNumber(minReelsViews);
+      if (minReelsViewsNum) {
+        const reelsViews = influencer.reelsViews || [];
+        const maxViews = Math.max(...reelsViews.map((view: string) => {
+          // Конвертируем строку просмотров в число
+          const num = parseFloat(view.replace(/[,K]/g, ''));
+          return view.includes('K') ? num * 1000 : num;
+        }));
+        
+        if (maxViews < minReelsViewsNum) return false;
+      }
+      
+      return true;
+    });
+  };
+
+  // Добавь функцию после других функций (около строки 80)
+// Замени функцию handleResetSession на эту версию:
+const handleResetSession = async () => {
+  try {
+    console.log('🔄 Сбрасываем сессию Instagram...');
+    
+    const response = await axios.post<{success: boolean, message: string}>('http://localhost:3001/api/locations/reset-session');
+    
+    if (response.data.success) {
+      alert('✅ Сессия Instagram сброшена успешно! Теперь можно войти с новыми данными.');
+    } else {
+      alert('❌ Ошибка сброса сессии');
+    }
+  } catch (error) {
+    console.error('Reset session error:', error);
+    alert('❌ Ошибка сброса сессии');
+  }
+};
+
+
+
+  // Получаем отфильтрованные результаты
+  const filteredInfluencers = getFilteredInfluencers();
+
+  
+
   return (
     <div className={styles.container}>
       {/* Заголовок */}
       <div className={styles.header}>
         <h1 className={styles.title}>InfluFind</h1>
+
+
         <p className={styles.subtitle}>
           Найдите локальных инфлюенсеров Instagram по городам и локациям
         </p>
@@ -158,8 +195,11 @@ const SearchForm: React.FC = () => {
               Выберите страну
             </div>
             <p className={styles.sectionDescription}>
+              
               Начните с выбора страны для поиска инфлюенсеров
             </p>
+
+            
             
             <div className={styles.formGroup}>
               <div className={styles.inputWrapper}>
@@ -424,6 +464,38 @@ const SearchForm: React.FC = () => {
                       <p className={styles.sectionDescription}>
                         Выберите способ поиска инфлюенсеров
                       </p>
+
+                      {/* Поле для количества постов */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Количество постов для парсинга:</label>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={maxPosts}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                setMaxPosts('');
+              } else {
+                const num = parseInt(value);
+                if (!isNaN(num) && num >= 1 && num <= 100) {
+                  setMaxPosts(num);
+                }
+              }
+            }}
+            onBlur={() => {
+              if (maxPosts === '' || typeof maxPosts === 'string' || maxPosts < 1) {
+                setMaxPosts(10);
+              }
+            }}
+            className={styles.searchInput}
+            style={{ width: '100px' }}
+          />
+            <span style={{ marginLeft: '10px', fontSize: '12px', color: '#666' }}>
+              (от 1 до 100 постов)
+            </span>
+          </div>
                       
                       <div className={styles.buttonGroup}>
                         <button 
@@ -434,7 +506,14 @@ const SearchForm: React.FC = () => {
                         >
                           {loading ? 'Ищем...' : `📋 Показать из базы (${selectedLocations.length} локаций)`}
                         </button>
-                        
+                        <button 
+                          onClick={handleContinueParsing}
+                          disabled={loading}
+                          className={`${styles.button} ${styles.buttonSuccess}`}
+                          title="Продолжить парсинг с последнего места"
+                        >
+                          {loading ? 'Парсим...' : '▶️ Продолжить парсинг'}
+                        </button>
                         <button 
                           onClick={handleForceRefresh}
                           disabled={loading}
@@ -443,6 +522,8 @@ const SearchForm: React.FC = () => {
                         >
                           {loading ? 'Парсим...' : '🔄 Спарсить новых инфлюенсеров'}
                         </button>
+
+                       
                       </div>
                       
                       <div className={styles.helpText}>
@@ -582,20 +663,22 @@ const SearchForm: React.FC = () => {
             
             {results.data.processedLocations && results.data.processedLocations.length > 0 && (
               <div>
-                <strong>Обработанные локации:</strong>{' '}
-                {results.data.processedLocations.map((location: any, index: number) => (
-                  <span key={index}>
-                    <a 
-                      href={location.url}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.resultsLink}
-                    >
-                      {location.name} 🔗
-                    </a>
-                    {index < results.data.processedLocations!.length - 1 && ', '}
-                  </span>
-                ))}
+                <strong>Обработанные локации:</strong>
+                <div className={styles.processedLocationsContainer}>
+                  {results.data.processedLocations.map((location: any, index: number) => (
+                    <div key={index} className={styles.processedLocationItem}>
+                      <a 
+                        href={location.url}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.resultsLink}
+                      >
+                        {location.name} 🔗
+                      </a>
+                      {index < results.data.processedLocations!.length - 1 && ', '}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
@@ -607,14 +690,128 @@ const SearchForm: React.FC = () => {
                 onClick={handleCopyAllUsernames}
                 className={styles.copyButton}
               >
-                📋 Копировать все ники ({results.data.influencers.length})
+                📋 Копировать все ники ({filteredInfluencers.length})
               </button>
             )}
+
+             {/* Кнопка сброса сессии */}
+<div className={styles.resetSection}>
+  <button 
+    onClick={handleResetSession}
+    className={`${styles.button} ${styles.resetButton}`}
+    type="button"
+  >
+    🔄 Сбросить сессию Instagram
+  </button>
+  <small className={styles.resetHint}>
+    Используйте если аккаунт заблокирован
+  </small>
+</div>
           </div>
 
-          {results.data.influencers.length > 0 ? (
-            <div className={styles.influencersGrid}>
-              {results.data.influencers.map((influencer: any, index: number) => (
+          {/* Блок фильтров */}
+            <div className={styles.filtersContainer}>
+              <h4 className={styles.filtersTitle}>🔍 Фильтры результатов</h4>
+              
+              <div className={styles.filtersGrid}>
+                {/* Фильтр по подписчикам */}
+                <div className={styles.filterGroup}>
+                  <label className={styles.filterLabel}>Количество подписчиков:</label>
+                  <div className={styles.followersFilterContainer}>
+                    <div className={styles.followersInputs}>
+                     <input
+                      type="text"
+                      placeholder="От"
+                      value={minFollowers}
+                      onChange={(e) => setMinFollowers(e.target.value)}
+                      onFocus={() => setActiveFollowersField('min')}
+                      className={styles.filterInput}
+                    />
+                    <span className={styles.filterSeparator}>—</span>
+                    <input
+                      type="text"
+                      placeholder="До"
+                      value={maxFollowers}
+                      onChange={(e) => setMaxFollowers(e.target.value)}
+                      onFocus={() => setActiveFollowersField('max')}
+                      className={styles.filterInput}
+                    />
+                    </div>
+                    
+                    {/* Быстрые шаблоны */}
+                    <div className={styles.followersTemplates}>
+                      {[
+                        { label: '5K', value: 5000 },
+                        { label: '10K', value: 10000 },
+                        { label: '50K', value: 50000 },
+                        { label: '100K', value: 100000 },
+                        { label: '1M', value: 1000000 },
+                        { label: '5M', value: 5000000 }
+                      ].map((template) => (
+                        <button
+                          key={template.label}
+                          onClick={() => {
+                              if (activeFollowersField === 'max') {
+                                setMaxFollowers(template.value);
+                              } else {
+                                setMinFollowers(template.value);
+                              }
+                            }}
+                          className={styles.templateButton}
+                          type="button"
+                        >
+                          {template.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Фильтр по локации */}
+                <div className={styles.filterGroup}>
+                  <label className={styles.filterLabel}>Локация:</label>
+                  <input
+                    type="text"
+                    placeholder="Поиск по локации..."
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                {/* Фильтр по просмотрам Reels */}
+                <div className={styles.filterGroup}>
+                  <label className={styles.filterLabel}>Мин. просмотры Reels:</label>
+                  <input
+                    type="text"
+                    placeholder="Например: 1000"
+                    value={minReelsViews}
+                    onChange={(e) => setMinReelsViews(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                {/* Кнопка сброса фильтров */}
+                <div className={styles.filterGroup}>
+                  <button
+                    onClick={() => {
+                      setMinFollowers('');
+                      setMaxFollowers('');
+                      setLocationFilter('');
+                      setMinReelsViews('');
+                    }}
+                    className={`${styles.button} ${styles.buttonSecondary}`}
+                    type="button"
+                  >
+                    🗑️ Сбросить фильтры
+                  </button>
+                </div>
+              </div>
+            </div>
+
+        {filteredInfluencers.length > 0 ? (
+          <div className={styles.influencersGrid}>
+            {filteredInfluencers.map((influencer: any, index: number) => (
                 <div key={index} className={styles.influencerCard}>
                   {/* Заголовок карточки с аватаркой */}
                   <div className={styles.cardHeaderWithAvatar}>

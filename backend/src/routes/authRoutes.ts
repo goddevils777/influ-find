@@ -120,4 +120,68 @@ router.post('/logout', (req: Request, res: Response) => {
   });
 });
 
+// Проверка токена / получение текущего пользователя
+router.get('/me', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Получаем данные пользователя из базы
+    const user = await userService.getUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем наличие действующей сессии Instagram
+    let instagramConnected = user.instagramConnected;
+    
+    // Если в базе отмечен как подключенный, дополнительно проверяем cookies
+    if (instagramConnected) {
+      try {
+        const { CookieManager } = require('../utils/cookieManager');
+        const cookieManager = new CookieManager(userId);
+        
+        // Проверяем возраст cookies
+        const cookieAge = cookieManager.getCookieAge();
+        
+        if (cookieAge !== null && cookieAge < 48) { // Считаем действительными cookies младше 48 часов
+          log(`✅ Instagram сессия активна для ${user.email} (возраст: ${cookieAge.toFixed(1)}h)`);
+          instagramConnected = true;
+        } else {
+          log(`⚠️ Instagram сессия устарела для ${user.email} (возраст: ${cookieAge ? cookieAge.toFixed(1) + 'h' : 'unknown'})`);
+          // Обновляем статус в базе
+          await userService.updateInstagramStatus(userId, false);
+          instagramConnected = false;
+        }
+      } catch (error) {
+        log(`⚠️ Ошибка проверки сессии Instagram для ${user.email}: ${error}`, 'warn');
+        instagramConnected = false;
+      }
+    }
+
+    // Возвращаем актуальные данные
+    const userSession = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      instagramConnected: instagramConnected,
+      proxyConnected: user.proxyConnected
+    };
+
+    res.json({
+      success: true,
+      user: userSession
+    });
+  } catch (error) {
+    log(`Error getting user info: ${error}`, 'error');
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка получения данных пользователя'
+    });
+  }
+});
+
 export default router;

@@ -24,19 +24,13 @@ export const requireProxyAndInstagram = async (req: any, res: Response, next: Ne
       });
     }
 
-    // Проверяем подключение прокси
-    if (!user.proxyConnected) {
-      log(`❌ Пользователь ${user.email} пытается запустить парсинг без прокси`);
-      return res.status(403).json({
-        success: false,
-        error: 'Прокси не подключен',
-        message: 'Для безопасности работы необходимо подключить прокси сервер. Перейдите в настройки и настройте прокси.',
-        requiresProxy: true
-      });
-    }
-
-    // Проверяем подключение Instagram
-    if (!user.instagramConnected) {
+    // УБИРАЕМ ПРОВЕРКУ ПРОКСИ - разрешаем парсинг без прокси
+    log(`✅ Пользователь ${user.email} запускает парсинг ${user.proxyConnected ? 'с прокси' : 'без прокси'}`);
+    
+    // Проверяем подключение Instagram только если не гостевой режим
+    const isGuestMode = req.body?.guestMode;
+    
+    if (!isGuestMode && !user.instagramConnected) {
       log(`❌ Пользователь ${user.email} пытается запустить парсинг без Instagram аккаунта`);
       return res.status(403).json({
         success: false,
@@ -45,12 +39,10 @@ export const requireProxyAndInstagram = async (req: any, res: Response, next: Ne
         requiresInstagram: true
       });
     }
-
-    log(`✅ Пользователь ${user.email} имеет все необходимые подключения для парсинга`);
     
     // Добавляем информацию о пользователе в request
     req.userConfig = {
-      proxyConfig: user.proxyConfig,
+      proxyConfig: user.proxyConfig || null,
       instagramUsername: user.instagramUsername
     };
 

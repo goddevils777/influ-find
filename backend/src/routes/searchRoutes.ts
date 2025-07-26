@@ -5,6 +5,7 @@ import { log } from '../utils/helpers';
 import { authenticateToken } from './authRoutes';
 import { requireProxyAndInstagram } from '../middleware/checkConnections';
 
+
 const router = Router();
 
 // Существующие роуты
@@ -14,6 +15,8 @@ router.post('/parse', forceParseCity);
 
 // Поиск инфлюенсеров по выбранным локациям
 router.post('/locations', authenticateToken, requireProxyAndInstagram, async (req: any, res: Response) => {
+    log(`🔍 DEBUG: req.user = ${JSON.stringify(req.user)}`);
+  log(`🔍 DEBUG: req.headers.authorization = ${req.headers.authorization}`);
   let locationParser: any = null;
   
   try {
@@ -151,13 +154,19 @@ log(`🔄 ${forceRefresh ? 'Принудительное обновление' :
     }
 
     log(`👤 Используем настройки пользователя ${userId}`);
-    log(`🔗 Прокси: ${userConfig.proxyConfig.host}:${userConfig.proxyConfig.port}`);
+log(`👤 Используем настройки пользователя ${userId}`);
+if (userConfig.proxyConfig) {
+  log(`🔗 Прокси: ${userConfig.proxyConfig.host}:${userConfig.proxyConfig.port}`);
+} else {
+  log(`🔗 Прокси: не используется`);
+}
 
     // Создаем парсер с настройками пользователя
-    locationParser = new LocationParser(false, {
-      userId: userId,
-      proxyConfig: userConfig.proxyConfig
-    });
+      const locationParser = new LocationParser(false, {
+        userId: userId,
+        proxyConfig: userConfig.proxyConfig
+      });
+    
     await locationParser.init();
     log(`✅ Парсер инициализирован успешно`);
     

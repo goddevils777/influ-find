@@ -35,52 +35,96 @@ export class LocationParser {
       }
 
       // УЛУЧШЕННЫЕ НАСТРОЙКИ БРАУЗЕРА ДЛЯ ОБХОДА ДЕТЕКЦИИ
-      const launchOptions: any = {
-        headless: false,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-background-networking',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-field-trial-config',
-          '--disable-ipc-flooding-protection',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-default-apps',
-          '--disable-popup-blocking',
-          '--disable-prompt-on-repost',
-          '--disable-hang-monitor',
-          '--disable-sync',
-          '--disable-translate',
-          '--disable-plugins',
-          '--disable-plugins-discovery',
-          '--disable-prerender-local-predictor',
-          '--disable-threaded-animation',
-          '--disable-threaded-scrolling',
-          '--disable-in-process-stack-traces',
-          '--disable-histogram-customizer',
-          '--disable-gl-extensions',
-          '--disable-composited-antialiasing',
-          '--disable-canvas-aa',
-          '--disable-3d-apis',
-          '--disable-accelerated-2d-canvas',
-          '--disable-accelerated-jpeg-decoding',
-          '--disable-accelerated-mjpeg-decode',
-          '--disable-app-list-dismiss-on-blur',
-          '--disable-accelerated-video-decode',
-          '--window-size=1366,768',
-          '--start-maximized'
-        ]
-      };
+     // УЛУЧШЕННЫЕ НАСТРОЙКИ БРАУЗЕРА ДЛЯ ОБХОДА ДЕТЕКЦИИ
+const launchOptions: any = {
+  headless: false,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-web-security',
+    '--disable-features=VizDisplayCompositor',
+    '--disable-background-networking',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-field-trial-config',
+    '--disable-ipc-flooding-protection',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-default-apps',
+    '--disable-popup-blocking',
+    '--disable-prompt-on-repost',
+    '--disable-hang-monitor',
+    '--disable-sync',
+    '--disable-translate',
+    '--disable-plugins',
+    '--disable-plugins-discovery',
+    '--disable-prerender-local-predictor',
+    '--disable-threaded-animation',
+    '--disable-threaded-scrolling',
+    '--disable-in-process-stack-traces',
+    '--disable-histogram-customizer',
+    '--disable-gl-extensions',
+    '--disable-composited-antialiasing',
+    '--disable-canvas-aa',
+    '--disable-3d-apis',
+    '--disable-accelerated-2d-canvas',
+    '--disable-accelerated-jpeg-decoding',
+    '--disable-accelerated-mjpeg-decode',
+    '--disable-app-list-dismiss-on-blur',
+    '--disable-accelerated-video-decode',
+    '--window-size=1366,768',
+    '--start-maximized'
+  ]
+};
+
+// ДОБАВЛЯЕМ НАСТРОЙКИ ПРОКСИ ЕСЛИ ЕСТЬ
+if (this.proxyConfig && this.proxyConfig.host && this.proxyConfig.port) {
+  let proxyUrl = '';
+  
+  if (this.proxyConfig.type === 'socks5') {
+    if (this.proxyConfig.username && this.proxyConfig.password) {
+      proxyUrl = `socks5://${this.proxyConfig.username}:${this.proxyConfig.password}@${this.proxyConfig.host}:${this.proxyConfig.port}`;
+    } else {
+      proxyUrl = `socks5://${this.proxyConfig.host}:${this.proxyConfig.port}`;
+    }
+  } else {
+    // HTTP/HTTPS прокси
+    proxyUrl = `${this.proxyConfig.type}://${this.proxyConfig.host}:${this.proxyConfig.port}`;
+  }
+  
+  launchOptions.args.push(`--proxy-server=${proxyUrl}`);
+  log(`🌐 LocationParser использует прокси: ${this.proxyConfig.host}:${this.proxyConfig.port}`);
+}
 
       this.browser = await puppeteer.launch(launchOptions);
 
-    const context = await this.browser.createBrowserContext();
-    this.page = await context.newPage();
+  
+// ДОБАВЛЯЕМ АВТОРИЗАЦИЮ ПРОКСИ ДЛЯ HTTP/HTTPS
+if (this.proxyConfig && 
+    (this.proxyConfig.type === 'http' || this.proxyConfig.type === 'https') && 
+    this.proxyConfig.username && this.proxyConfig.password) {
+  
+  log(`🔐 Настраиваем авторизацию прокси для ${this.proxyConfig.type}`);
+}
+
+const context = await this.browser.createBrowserContext();
+this.page = await context.newPage();
+
+// УСТАНАВЛИВАЕМ АВТОРИЗАЦИЮ ПРОКСИ НА СТРАНИЦЕ
+if (this.proxyConfig && 
+    (this.proxyConfig.type === 'http' || this.proxyConfig.type === 'https') && 
+    this.proxyConfig.username && this.proxyConfig.password) {
+  
+  await this.page.authenticate({
+    username: this.proxyConfig.username,
+    password: this.proxyConfig.password
+  });
+  
+  log(`✅ Авторизация прокси настроена: ${this.proxyConfig.username}`);
+}
+
+
 
     // ДОБАВЬ ЭТУ СТРОКУ:
     log('🔍 ОТЛАДКА: Страница создана, начинаем умную очистку...');
@@ -199,9 +243,35 @@ export class LocationParser {
         log('🔍 Режим с авторизацией - проверяем сохраненную авторизацию...');
         const savedAuth = await this.checkSavedAuth();
         
-        if (!savedAuth) {
-          log('❌ Нет сохраненной авторизации - требуется ручная авторизация');
-          await this.manualAuth();
+       if (!savedAuth) {
+          log('❌ Авторизация через cookies не удалась. Открываем Instagram для проверки...');
+          
+          // Просто открываем Instagram и проверяем
+          try {
+            await this.page.goto('https://www.instagram.com/', { 
+              waitUntil: 'networkidle2',
+              timeout: 15000 
+            });
+            
+            const finalCheck = await this.page.evaluate(() => {
+              return {
+                hasLoginForm: !!document.querySelector('input[name="username"]'),
+                hasNavigation: !!document.querySelector('nav')
+              };
+            });
+            
+            if (!finalCheck.hasLoginForm && finalCheck.hasNavigation) {
+              log('✅ Instagram показывает авторизованную страницу!');
+              // Сохраняем cookies для будущего использования
+              await this.cookieManager.saveCookies(this.page);
+            } else {
+              log('❌ Instagram требует авторизацию');
+              await this.manualAuth();
+            }
+          } catch (error) {
+            log(`❌ Ошибка проверки Instagram: ${error}`, 'error');
+            await this.manualAuth();
+          }
         }
       } else {
         log('👤 Гостевой режим - пропускаем авторизацию');
@@ -215,67 +285,78 @@ export class LocationParser {
   }
 
   private async checkSavedAuth(): Promise<boolean> {
-    try {
-      // Проверяем возраст cookies
-      const cookieAge = this.cookieManager.getCookieAge();
-      if (cookieAge !== null) {
-        log(`📅 Cookie age: ${cookieAge.toFixed(1)} hours`);
-        
-        // Если cookies старше 24 часов, лучше их обновить
-        if (cookieAge > 24) {
-          log('⚠️ Cookies are quite old, might need refresh');
-        }
+  try {
+    // Проверяем возраст cookies
+    const cookieAge = this.cookieManager.getCookieAge();
+    if (cookieAge !== null) {
+      log(`📅 Cookie age: ${cookieAge.toFixed(1)} hours`);
+      
+      // Если cookies старше 24 часов, лучше их обновить
+      if (cookieAge > 24) {
+        log('⚠️ Cookies are quite old, might need refresh');
       }
-      
-      const cookiesLoaded = await this.cookieManager.loadCookies(this.page);
-      
-      if (cookiesLoaded) {
-        log('🔍 Проверяем сохраненную авторизацию...');
-        
-        // Дополнительная задержка для стабильности
-        await delay(2000);
-        
-        const isValid = await this.cookieManager.isAuthValid(this.page);
-        
-        if (isValid) {
-          log('✅ Сохраненная авторизация действительна! Логин не требуется.');
-          return true;
-        } else {
-          log('❌ Сохраненная авторизация истекла или недействительна');
-          // НЕ УДАЛЯЕМ cookies сразу, может быть временная проблема
-          log('🔄 Попробуем использовать другой метод проверки...');
-          
-          // Альтернативная проверка - просто попробуем зайти на профильную страницу
-          try {
-            await this.page.goto('https://www.instagram.com/accounts/edit/', { 
-              waitUntil: 'networkidle2',
-              timeout: 15000 
-            });
-            
-            const urlAfterRedirect = this.page.url();
-            
-            if (!urlAfterRedirect.includes('/accounts/login/')) {
-              log('✅ Альтернативная проверка прошла - авторизация есть!');
-              return true;
-            } else {
-              log('❌ Альтернативная проверка не прошла - требуется авторизация');
-              this.cookieManager.clearCookies();
-            }
-          } catch (altError) {
-            log(`⚠️ Альтернативная проверка не удалась: ${altError}`, 'warn');
-            this.cookieManager.clearCookies();
-          }
-        }
-      } else {
-        log('📝 Сохраненных данных авторизации нет');
-      }
-      
-      return false;
-    } catch (error) {
-      log(`❌ Ошибка проверки авторизации: ${error}`, 'error');
-      return false;
     }
+
+    const cookiesLoaded = await this.cookieManager.loadCookies(this.page);
+    
+    if (cookiesLoaded) {
+      log('🔍 Проверяем сохраненную авторизацию...');
+      
+      // Дополнительная задержка для стабильности
+      await delay(2000);
+      
+      const isValid = await this.cookieManager.isAuthValid(this.page);
+      
+      if (isValid) {
+        log('✅ Сохраненная авторизация действительна! Логин не требуется.');
+        return true;
+      } else {
+        log('❌ Sessionid cookie отсутствует, но попробуем открыть Instagram...');
+        
+        // Просто идем на Instagram и проверяем авторизацию
+        try {
+          await this.page.goto('https://www.instagram.com/', { 
+            waitUntil: 'networkidle2',
+            timeout: 15000 
+          });
+          
+          // Проверяем есть ли элементы авторизованного пользователя
+          const authCheck = await this.page.evaluate(() => {
+            return {
+              hasLoginForm: !!document.querySelector('input[name="username"]'),
+              hasNavigation: !!document.querySelector('nav'),
+              hasCreateButton: !!document.querySelector('svg[aria-label*="New post"], svg[aria-label*="Create"]'),
+              currentUrl: window.location.href
+            };
+          });
+          
+          log(`🔍 Проверка Instagram: hasLoginForm=${authCheck.hasLoginForm}, hasNavigation=${authCheck.hasNavigation}, hasCreateButton=${authCheck.hasCreateButton}`);
+          
+          if (!authCheck.hasLoginForm && (authCheck.hasNavigation || authCheck.hasCreateButton)) {
+            log('✅ Instagram открылся как авторизованный пользователь!');
+            
+            // Сохраняем текущие cookies после успешной проверки
+            await this.cookieManager.saveCookies(this.page);
+            log('💾 Обновили сохраненные cookies');
+            
+            return true;
+          } else {
+            log('❌ Instagram требует авторизацию');
+          }
+        } catch (error) {
+          log(`⚠️ Ошибка проверки Instagram: ${error}`, 'warn');
+        }
+      }
+    } else {
+      log('📝 Сохраненных данных авторизации нет');
+    }
+    
+    return false;
+  } catch (error) {
+    log(`❌ Ошибка проверки авторизации: ${error}`, 'error');
+    return false;
   }
+}
 
   private async manualAuth(): Promise<void> {
     await this.page.goto('https://www.instagram.com/accounts/login/', {

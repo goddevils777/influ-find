@@ -7,6 +7,7 @@ export interface Influencer {
   bio?: string;
   avatarUrl?: string;
   reelsViews?: string[];
+  lastUpdated?: string;
   foundInLocation?: {
     name: string;
     url: string;

@@ -22,14 +22,21 @@ router.post('/connect', authenticateToken, async (req: any, res: Response) => {
     // Получаем настройки пользователя
     const user = await userService.getUserById(userId);
     
-    if (!user || !user.proxyConnected || !user.proxyConfig) {
-      return res.status(400).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: 'Для подключения Instagram необходим прокси. Сначала подключите прокси.'
+        message: 'Пользователь не найден'
       });
     }
 
-    log(`🔗 Запускаем браузер через прокси ${user.proxyConfig.host}:${user.proxyConfig.port}`);
+    // Проверяем есть ли прокси (не обязательно)
+    const hasProxy = user.proxyConnected && user.proxyConfig;
+
+    if (hasProxy) {
+      log(`🔗 Запускаем браузер через прокси ${user.proxyConfig!.host}:${user.proxyConfig!.port}`);
+    } else {
+      log(`🔗 Запускаем браузер БЕЗ прокси (обычное подключение)`);
+    }
 
     const puppeteer = require('puppeteer-extra');
     const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -37,135 +44,139 @@ router.post('/connect', authenticateToken, async (req: any, res: Response) => {
     
     puppeteer.use(StealthPlugin());
 
-    // Для SOCKS5 используем proxy-chain для конвертации в HTTP
-    if (user.proxyConfig.type === 'socks5') {
-      log('🔄 Конвертируем SOCKS5 в HTTP прокси через proxy-chain...');
-      
-      // Формируем SOCKS5 URL
-      let socksUrl = 'socks5://';
-      if (user.proxyConfig.username && user.proxyConfig.password) {
-        socksUrl += `${encodeURIComponent(user.proxyConfig.username)}:${encodeURIComponent(user.proxyConfig.password)}@`;
+    // Формируем параметры запуска браузера
+    const launchOptions: any = {
+      headless: false, // Показываем браузер для авторизации
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--start-maximized'
+      ]
+    };
+
+    // Добавляем прокси только если он есть
+    if (hasProxy && user.proxyConfig) {
+      // Для SOCKS5 используем proxy-chain для конвертации в HTTP
+      if (user.proxyConfig.type === 'socks5') {
+        log('🔄 Конвертируем SOCKS5 в HTTP прокси через proxy-chain...');
+        
+        // Формируем SOCKS5 URL
+        let socksUrl = 'socks5://';
+        if (user.proxyConfig.username && user.proxyConfig.password) {
+          socksUrl += `${encodeURIComponent(user.proxyConfig.username)}:${encodeURIComponent(user.proxyConfig.password)}@`;
+        }
+        socksUrl += `${user.proxyConfig.host}:${user.proxyConfig.port}`;
+        
+        log(`🔗 SOCKS5 URL: ${socksUrl}`);
+        
+        // Создаем HTTP прокси сервер который проксирует через SOCKS5
+        proxyUrl = await ProxyChain.anonymizeProxy(socksUrl);
+        useProxyChain = true;
+        log(`✅ Создан локальный HTTP прокси: ${proxyUrl}`);
+      } else {
+        // Для HTTP/HTTPS прокси - НЕ включаем авторизацию в URL
+        proxyUrl = `${user.proxyConfig.type}://${user.proxyConfig.host}:${user.proxyConfig.port}`;
       }
-      socksUrl += `${user.proxyConfig.host}:${user.proxyConfig.port}`;
       
-      log(`🔗 SOCKS5 URL: ${socksUrl}`);
-      
-      // Создаем HTTP прокси сервер который проксирует через SOCKS5
-      proxyUrl = await ProxyChain.anonymizeProxy(socksUrl);
-      useProxyChain = true;
-      log(`✅ Создан локальный HTTP прокси: ${proxyUrl}`);
-    } else {
-  // Для HTTP/HTTPS прокси - НЕ включаем авторизацию в URL
-  proxyUrl = `${user.proxyConfig.type}://${user.proxyConfig.host}:${user.proxyConfig.port}`;
-}
+      launchOptions.args.push(`--proxy-server=${proxyUrl}`);
+      log(`🚀 Запускаем браузер с прокси: ${proxyUrl}`);
+    }
 
-// Формируем параметры запуска браузера
-const launchOptions: any = {
-  headless: false, // Показываем браузер для авторизации
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-blink-features=AutomationControlled',
-    '--start-maximized',
-    `--proxy-server=${proxyUrl}`
-  ]
-};
+    browser = await puppeteer.launch(launchOptions);
+    const page = await browser.newPage();
 
-log(`🚀 Запускаем браузер с прокси: ${proxyUrl}`);
-
-browser = await puppeteer.launch(launchOptions);
-const page = await browser.newPage();
-
-// Для HTTP/HTTPS прокси ВСЕГДА используем authenticate
-if ((user.proxyConfig.type === 'http' || user.proxyConfig.type === 'https') && 
-    user.proxyConfig.username && user.proxyConfig.password) {
-  await page.authenticate({
-    username: user.proxyConfig.username,
-    password: user.proxyConfig.password
-  });
-  log(`🔐 Настроена авторизация прокси: ${user.proxyConfig.username}`);
-}
+    // Для HTTP/HTTPS прокси ВСЕГДА используем authenticate (только если есть прокси)
+    if (hasProxy && user.proxyConfig && 
+        (user.proxyConfig.type === 'http' || user.proxyConfig.type === 'https') && 
+        user.proxyConfig.username && user.proxyConfig.password) {
+      await page.authenticate({
+        username: user.proxyConfig.username,
+        password: user.proxyConfig.password
+      });
+      log(`🔐 Настроена авторизация прокси: ${user.proxyConfig.username}`);
+    }
 
     // Устанавливаем User-Agent
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
-    // Проверяем IP
-    try {
-      await page.goto('https://httpbin.org/ip', { waitUntil: 'networkidle2', timeout: 15000 });
-      const ipInfo = await page.evaluate(() => {
-        try {
-          return JSON.parse(document.body.innerText);
-        } catch {
-          return { origin: 'unknown' };
-        }
-      });
-      log(`🌐 Браузер использует IP: ${ipInfo.origin}`);
-    } catch (ipError) {
-      log(`⚠️ Не удалось проверить IP: ${ipError}`, 'warn');
+    // Проверяем IP только если есть прокси
+    if (hasProxy) {
+      try {
+        await page.goto('https://httpbin.org/ip', { waitUntil: 'networkidle2', timeout: 15000 });
+        const ipInfo = await page.evaluate(() => {
+          try {
+            return JSON.parse(document.body.innerText);
+          } catch {
+            return { origin: 'unknown' };
+          }
+        });
+        log(`🌐 Браузер использует IP: ${ipInfo.origin}`);
+      } catch (ipError) {
+        log(`⚠️ Не удалось проверить IP: ${ipError}`, 'warn');
+      }
     }
 
-// Убираем все переходы на страницы локаций и логина
-// Просто открываем главную страницу Instagram
-log('🌐 Открываем главную страницу Instagram...');
-await page.goto('https://www.instagram.com/', {
-  waitUntil: 'networkidle2',
-  timeout: 30000
-});
+    // Убираем все переходы на страницы локаций и логина
+    // Просто открываем главную страницу Instagram
+    log('🌐 Открываем главную страницу Instagram...');
+    await page.goto('https://www.instagram.com/', {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
 
-// Небольшая пауза для загрузки
-await new Promise(resolve => setTimeout(resolve, 3000));
+    // Небольшая пауза для загрузки
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-// Проверяем что главная страница загрузилась
-const mainPageInfo = await page.evaluate(() => {
-  return {
-    title: document.title,
-    url: window.location.href,
-    hasError: document.body.innerText.includes('429') || document.body.innerText.includes('не працює'),
-    hasInstagramContent: document.body.innerText.toLowerCase().includes('instagram'),
-    hasLoginButton: !!document.querySelector('a[href*="/accounts/login/"]')
-  };
-});
+    // Проверяем что главная страница загрузилась
+    const mainPageInfo = await page.evaluate(() => {
+      return {
+        title: document.title,
+        url: window.location.href,
+        hasError: document.body.innerText.includes('429') || document.body.innerText.includes('не працює'),
+        hasInstagramContent: document.body.innerText.toLowerCase().includes('instagram'),
+        hasLoginButton: !!document.querySelector('a[href*="/accounts/login/"]')
+      };
+    });
 
-log(`📊 Главная страница Instagram: ${JSON.stringify(mainPageInfo)}`);
+    log(`📊 Главная страница Instagram: ${JSON.stringify(mainPageInfo)}`);
 
-if (mainPageInfo.hasError) {
-  log(`❌ Instagram блокирует прокси на главной странице`, 'error');
-  
-  await browser.close();
-  
-  return res.status(400).json({
-    success: false,
-    message: 'Instagram блокирует ваш прокси. Попробуйте другой прокси.',
-    error: 'proxy_blocked'
-  });
-}
+    if (mainPageInfo.hasError) {
+      log(`❌ Instagram блокирует ${hasProxy ? 'прокси' : 'подключение'} на главной странице`, 'error');
+      
+      await browser.close();
+      
+      return res.status(400).json({
+        success: false,
+        message: hasProxy ? 'Instagram блокирует ваш прокси. Попробуйте другой прокси.' : 'Instagram недоступен. Попробуйте позже.',
+        error: 'access_blocked'
+      });
+    }
 
-if (!mainPageInfo.hasInstagramContent) {
-  log(`❌ Страница загрузилась некорректно`, 'error');
-  
-  await browser.close();
-  
-  return res.status(400).json({
-    success: false,
-    message: 'Страница Instagram загрузилась некорректно. Проверьте подключение.',
-    error: 'page_load_error'
-  });
-}
+    if (!mainPageInfo.hasInstagramContent) {
+      log(`❌ Страница загрузилась некорректно`, 'error');
+      
+      await browser.close();
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Страница Instagram загрузилась некорректно. Проверьте подключение.',
+        error: 'page_load_error'
+      });
+    }
 
-log('✅ Главная страница Instagram загружена успешно');
-log('🔐 Нажмите кнопку "Log in" в браузере и войдите в свой аккаунт');
+    log('✅ Главная страница Instagram загружена успешно');
+    log('🔐 Нажмите кнопку "Log in" в браузере и войдите в свой аккаунт');
 
-
-
-    log('✅ Браузер открыт для авторизации Instagram через прокси');
+    log('✅ Браузер открыт для авторизации Instagram');
     log('🔐 Войдите в Instagram в открывшемся браузере');
 
     // Отвечаем что процесс начат
     res.json({
       success: true,
-      message: 'Браузер открыт через прокси. Войдите в Instagram, затем можете закрыть браузер.',
+      message: `Браузер открыт${hasProxy ? ' через прокси' : ''}. Войдите в Instagram, затем можете закрыть браузер.`,
       status: 'browser_opened',
-      proxyUsed: `${user.proxyConfig.host}:${user.proxyConfig.port}`
+      proxyUsed: hasProxy && user.proxyConfig ? `${user.proxyConfig.host}:${user.proxyConfig.port}` : 'none'
     });
 
     // Настраиваем сохранение cookies при изменении
@@ -179,59 +190,65 @@ log('🔐 Нажмите кнопку "Log in" в браузере и войди
       try {
         const currentUrl = page.url();
         
-        // Если пользователь ушел со страницы логина - значит авторизовался
+        // Если пользователь ушел со страницы логина - проверяем полную авторизацию
         if (!currentUrl.includes('/accounts/login/')) {
-          log('🎉 Пользователь авторизовался в Instagram!');
-          
-
-          // И замени на:
-                    // Сохраняем cookies
+          // Дополнительная проверка - ждем sessionid cookie
           const cookies = await page.cookies();
-          const instagramCookies = cookies.filter((cookie: any) => 
-            cookie.domain.includes('instagram.com')
-          );
-
-          if (instagramCookies.length > 0) {
-            // Сохраняем в том же формате что ожидает CookieManager
-            const cookieData = {
-              cookies: instagramCookies,
-              savedAt: new Date().toISOString(),
-              userAgent: await page.evaluate(() => navigator.userAgent)
-            };
-            
-            fs.writeFileSync(
-              path.join(cookiesPath, 'instagram_cookies.json'), 
-              JSON.stringify(cookieData, null, 2)
-            );
-            
-            // Проверяем критические cookies
-            const criticalCookies = instagramCookies.filter((cookie: any) =>
-              ['sessionid', 'ds_user_id', 'csrftoken'].includes(cookie.name)
-            );
-            
-            log(`🔑 Сохранено cookies: ${instagramCookies.length} общих, ${criticalCookies.length} критических`);
-            log(`🔑 Критические: ${criticalCookies.map((c: any) => c.name).join(', ')}`);
-            
-            // Обновляем статус пользователя в базе
-            // Пытаемся получить имя пользователя из страницы
-            let instagramUsername = 'connected_user';
-            try {
-              instagramUsername = await page.evaluate(() => {
-                // Ищем имя пользователя в различных местах
-                const usernameElement = document.querySelector('a[href^="/"][href$="/"]') ||
-                                      document.querySelector('[data-testid="user-avatar"]') ||
-                                      document.querySelector('header a[href^="/"]');
-                return usernameElement?.getAttribute('href')?.replace(/\//g, '') || 'connected_user';
-              });
-            } catch (e) {
-              // Игнорируем ошибки получения username
-            }
-
-            await userService.updateInstagramStatus(userId, true, instagramUsername);
-            log(`✅ Instagram подключен для пользователя ${req.user.email} (@${instagramUsername}) - cookies сохранены`);
+          const sessionCookie = cookies.find((c: any) => c.name === 'sessionid');
+          
+          if (sessionCookie) {
+            log('🎉 Пользователь полностью авторизовался в Instagram!');
+            log(`🔑 Найден sessionid: ${sessionCookie.value.substring(0, 20)}...`);
             
             clearInterval(checkAuth);
+            
+            // Сохраняем cookies
+            const instagramCookies = cookies.filter((cookie: any) => 
+              cookie.domain.includes('instagram.com')
+            );
+
+            if (instagramCookies.length > 0) {
+              // Сохраняем в том же формате что ожидает CookieManager
+              const cookieData = {
+                cookies: instagramCookies,
+                savedAt: new Date().toISOString(),
+                userAgent: await page.evaluate(() => navigator.userAgent)
+              };
+              
+              fs.writeFileSync(
+                path.join(cookiesPath, 'instagram_cookies.json'), 
+                JSON.stringify(cookieData, null, 2)
+              );
+              
+              // Проверяем критические cookies
+              const criticalCookies = instagramCookies.filter((cookie: any) =>
+                ['sessionid', 'ds_user_id', 'csrftoken'].includes(cookie.name)
+              );
+              
+              log(`🔑 Сохранено cookies: ${instagramCookies.length} общих, ${criticalCookies.length} критических`);
+              log(`🔑 Критические: ${criticalCookies.map((c: any) => c.name).join(', ')}`);
+              
+              // Пытаемся получить имя пользователя из страницы
+              let instagramUsername = 'connected_user';
+              try {
+                instagramUsername = await page.evaluate(() => {
+                  const usernameElement = document.querySelector('a[href^="/"][href$="/"]') ||
+                                        document.querySelector('[data-testid="user-avatar"]') ||
+                                        document.querySelector('header a[href^="/"]');
+                  return usernameElement?.getAttribute('href')?.replace(/\//g, '') || 'connected_user';
+                });
+              } catch (e) {
+                // Игнорируем ошибки получения username
+              }
+
+              await userService.updateInstagramStatus(userId, true, instagramUsername);
+              log(`✅ Instagram подключен для пользователя ${req.user.email} (@${instagramUsername}) - cookies сохранены`);
+            }
+          } else {
+            log('⏳ Авторизация в процессе, ждем sessionid cookie...');
           }
+        } else {
+          log('⏳ Пользователь все еще на странице входа...');
         }
       } catch (error) {
         // Браузер закрыт или другая ошибка

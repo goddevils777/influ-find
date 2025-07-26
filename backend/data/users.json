@@ -15,14 +15,7 @@
     "name": "God",
     "createdAt": "2025-07-24T19:20:14.677Z",
     "instagramConnected": true,
-    "proxyConnected": true,
-    "proxyConfig": {
-      "host": "154.222.250.252",
-      "port": 63140,
-      "username": "XBq2FBiv",
-      "password": "Fiu5p7rk",
-      "type": "http"
-    },
+    "proxyConnected": false,
     "instagramUsername": "connected_user"
   },
   {

@@ -74,13 +74,12 @@ router.post('/disconnect', authenticateToken, async (req: any, res: Response) =>
     const userId = req.user.userId;
     log(`🔌 Пользователь ${req.user.email} отключает прокси`);
 
-    // Также отключаем Instagram если был подключен
-    await userService.updateInstagramStatus(userId, false);
+    // Отключаем только прокси, НЕ Instagram
     await userService.updateProxyStatus(userId, false);
     
     res.json({
       success: true,
-      message: 'Прокси отключен. Instagram также отключен для безопасности.'
+      message: 'Прокси отключен. Instagram аккаунт остается подключен.'
     });
 
   } catch (error) {
